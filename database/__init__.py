@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2018/10/27 14:28
 # @Author  : Sakura
-# @Site    : 
+# @Site    :
 # @File    : __init__.py.py
 # @Software: PyCharm
 
@@ -12,7 +12,8 @@ from configloader import *
 
 if mysql_config['ssl_enable'] == 1:
     database = MySQLDatabase(mysql_config["db"],
-                             host=mysql_config["host"], port=int(mysql_config["port"]),
+                             host=mysql_config["host"], port=int(
+                                 mysql_config["port"]),
                              user=mysql_config["user"], passwd=mysql_config["password"],
                              charset='utf8',
                              ssl={'ca': mysql_config["ssl_ca"], 'cert': mysql_config["ssl_cert"],
@@ -20,7 +21,8 @@ if mysql_config['ssl_enable'] == 1:
                              )
 else:
     database = MySQLDatabase(mysql_config["db"],
-                             host=mysql_config["host"], port=int(mysql_config["port"]),
+                             host=mysql_config["host"], port=int(
+                                 mysql_config["port"]),
                              user=mysql_config["user"], passwd=mysql_config["password"],
                              charset='utf8'
                              )
@@ -41,9 +43,10 @@ class BaseModel(Model):
 class SsNodeIp(BaseModel):
     created_at = IntegerField(constraints=[SQL("DEFAULT 0")])
     ip = TextField(null=True)
-    node = IntegerField(column_name='node_id', constraints=[SQL("DEFAULT 0")])
+    node = IntegerField(column_name='node_id',
+                        constraints=[SQL("DEFAULT NULL")])
     port = IntegerField(constraints=[SQL("DEFAULT 0")])
     type = CharField(constraints=[SQL("DEFAULT 'tcp'")])
 
     class Meta:
-        table_name = 'ss_node_ip'
+        table_name = 'node_online_ip'

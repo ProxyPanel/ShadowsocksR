@@ -20,12 +20,14 @@ import threading
 
 if __name__ == '__main__':
     import inspect
-    os.chdir(os.path.dirname(os.path.realpath(inspect.getfile(inspect.currentframe()))))
+    os.chdir(os.path.dirname(os.path.realpath(
+        inspect.getfile(inspect.currentframe()))))
 
 import db_transfer
 from shadowsocks import shell
 from configloader import get_config
 import logging
+
 
 class MainThread(threading.Thread):
     def __init__(self, obj):
@@ -45,12 +47,7 @@ def main():
     if False:
         db_transfer.DbTransfer.thread_db()
     else:
-        if get_config().API_INTERFACE == 'mudbjson':
-            thread = MainThread(db_transfer.MuJsonTransfer)
-        elif get_config().API_INTERFACE == 'sspanelv2':
-            thread = MainThread(db_transfer.DbTransfer)
-        else:
-            thread = MainThread(db_transfer.Dbv3Transfer)
+        thread = MainThread(db_transfer.Dbv3Transfer)
         thread.start()
         try:
             while thread.is_alive():
@@ -60,6 +57,6 @@ def main():
             traceback.print_exc()
             thread.stop()
 
+
 if __name__ == '__main__':
     main()
-

@@ -17,17 +17,19 @@ from utils.net_util import *
 switchrule = None
 db_instance = None
 
+
 class TransferBase(object):
     def __init__(self):
         import threading
         self.event = threading.Event()
-        self.key_list = ['port', 'u', 'd', 'transfer_enable', 'passwd', 'enable', 'protocol_param']
-        self.last_get_transfer = {} #上一次的实际流量
-        self.last_update_transfer = {} #上一次更新到的流量（小于等于实际流量）
-        self.force_update_transfer = set() #强制推入数据库的ID
-        self.port_uid_table = {} #端口到uid的映射（仅v3以上有用）
-        self.onlineuser_cache = lru_cache.LRUCache(timeout=60*30) #用户在线状态记录
-        self.pull_ok = False #记录是否已经拉出过数据
+        self.key_list = ['port', 'u', 'd', 'transfer_enable',
+                         'passwd', 'enable', 'protocol_param']
+        self.last_get_transfer = {}  # 上一次的实际流量
+        self.last_update_transfer = {}  # 上一次更新到的流量（小于等于实际流量）
+        self.force_update_transfer = set()  # 强制推入数据库的ID
+        self.port_uid_table = {}  # 端口到uid的映射（仅v3以上有用）
+        self.onlineuser_cache = lru_cache.LRUCache(timeout=60*30)  # 用户在线状态记录
+        self.pull_ok = False  # 记录是否已经拉出过数据
         self.mu_ports = {}
 
     def load_cfg(self):
@@ -36,43 +38,47 @@ class TransferBase(object):
     def push_db_all_user(self):
         if self.pull_ok is False:
             return
-        #更新用户流量到数据库
+        # 更新用户流量到数据库
         last_transfer = self.last_update_transfer
         curr_transfer = ServerPool.get_instance().get_servers_transfer()
-        #上次和本次的增量
+        # 上次和本次的增量
         dt_transfer = {}
-        for id in self.force_update_transfer: #此表中的用户统计上次未计入的流量
+        for id in self.force_update_transfer:  # 此表中的用户统计上次未计入的流量
             if id in self.last_get_transfer and id in last_transfer:
-                dt_transfer[id] = [self.last_get_transfer[id][0] - last_transfer[id][0], self.last_get_transfer[id][1] - last_transfer[id][1]]
+                dt_transfer[id] = [self.last_get_transfer[id][0] - last_transfer[id]
+                                   [0], self.last_get_transfer[id][1] - last_transfer[id][1]]
 
         for id in curr_transfer.keys():
             if id in self.force_update_transfer or id in self.mu_ports:
                 continue
-            #算出与上次记录的流量差值，保存于dt_transfer表
+            # 算出与上次记录的流量差值，保存于dt_transfer表
             if id in last_transfer:
                 if curr_transfer[id][0] + curr_transfer[id][1] - last_transfer[id][0] - last_transfer[id][1] <= 0:
                     continue
                 dt_transfer[id] = [curr_transfer[id][0] - last_transfer[id][0],
-                                curr_transfer[id][1] - last_transfer[id][1]]
+                                   curr_transfer[id][1] - last_transfer[id][1]]
             else:
                 if curr_transfer[id][0] + curr_transfer[id][1] <= 0:
                     continue
                 dt_transfer[id] = [curr_transfer[id][0], curr_transfer[id][1]]
 
-            #有流量的，先记录在线状态
+            # 有流量的，先记录在线状态
             if id in self.last_get_transfer:
                 if curr_transfer[id][0] + curr_transfer[id][1] > self.last_get_transfer[id][0] + self.last_get_transfer[id][1]:
-                    self.onlineuser_cache[id] = curr_transfer[id][0] + curr_transfer[id][1]
+                    self.onlineuser_cache[id] = curr_transfer[id][0] + \
+                        curr_transfer[id][1]
             else:
-                self.onlineuser_cache[id] = curr_transfer[id][0] + curr_transfer[id][1]
+                self.onlineuser_cache[id] = curr_transfer[id][0] + \
+                    curr_transfer[id][1]
 
         self.onlineuser_cache.sweep()
 
-        update_transfer = self.update_all_user(dt_transfer) #返回有更新的表
-        for id in update_transfer.keys(): #其增量加在此表
-            if id not in self.force_update_transfer: #但排除在force_update_transfer内的
-                last = self.last_update_transfer.get(id, [0,0])
-                self.last_update_transfer[id] = [last[0] + update_transfer[id][0], last[1] + update_transfer[id][1]]
+        update_transfer = self.update_all_user(dt_transfer)  # 返回有更新的表
+        for id in update_transfer.keys():  # 其增量加在此表
+            if id not in self.force_update_transfer:  # 但排除在force_update_transfer内的
+                last = self.last_update_transfer.get(id, [0, 0])
+                self.last_update_transfer[id] = [
+                    last[0] + update_transfer[id][0], last[1] + update_transfer[id][1]]
         self.last_get_transfer = curr_transfer
         for id in self.force_update_transfer:
             if id in self.last_update_transfer:
@@ -82,8 +88,8 @@ class TransferBase(object):
         self.force_update_transfer = set()
 
     def del_server_out_of_bound_safe(self, last_rows, rows):
-        #停止超流量的服务
-        #启动没超流量的服务
+        # 停止超流量的服务
+        # 启动没超流量的服务
         keymap = {}
         try:
             switchrule = importloader.load('switchrule')
@@ -93,11 +99,12 @@ class TransferBase(object):
         cur_servers = {}
         new_servers = {}
         allow_users = {}
-        mu_servers  = {}
+        mu_servers = {}
         config = shell.get_config(False)
         for row in rows:
             try:
-                allow = switchrule.isTurnOn(row) and row['enable'] == 1 and row['u'] + row['d'] < row['transfer_enable']
+                allow = switchrule.isTurnOn(
+                    row) and row['enable'] == 1 and row['u'] + row['d'] < row['transfer_enable']
             except Exception as e:
                 allow = False
 
@@ -109,7 +116,8 @@ class TransferBase(object):
             if 'id' in row:
                 self.port_uid_table[row['port']] = row['id']
 
-            read_config_keys = ['method', 'obfs', 'obfs_param', 'protocol', 'protocol_param', 'forbidden_ip', 'forbidden_port', 'speed_limit_per_con', 'speed_limit_per_user']
+            read_config_keys = ['method', 'obfs', 'obfs_param', 'protocol', 'protocol_param',
+                                'forbidden_ip', 'forbidden_port', 'speed_limit_per_con', 'speed_limit_per_user']
             for name in read_config_keys:
                 if name in row and row[name]:
                     if name in keymap:
@@ -123,12 +131,14 @@ class TransferBase(object):
                     try:
                         cfg[name] = cfg[name].encode('utf-8')
                     except Exception as e:
-                        logging.warning('encode cfg key "%s" fail, val "%s"' % (name, cfg[name]))
+                        logging.warning(
+                            'encode cfg key "%s" fail, val "%s"' % (name, cfg[name]))
 
             if port not in cur_servers:
                 cur_servers[port] = passwd
             else:
-                logging.error('more than one user use the same port [%s]' % (port,))
+                logging.error(
+                    'more than one user use the same port [%s]' % (port,))
                 continue
 
             if 'protocol' in cfg and 'protocol_param' in cfg and common.to_str(cfg['protocol']) in obfs.mu_protocol():
@@ -148,7 +158,8 @@ class TransferBase(object):
                             cfgchange = True
                             break
                 if not cfgchange and port in ServerPool.get_instance().tcp_ipv6_servers_pool:
-                    relay = ServerPool.get_instance().tcp_ipv6_servers_pool[port]
+                    relay = ServerPool.get_instance(
+                    ).tcp_ipv6_servers_pool[port]
                     for name in merge_config_keys:
                         if (name in cfg) and ((name not in relay._config) or not self.cmp(cfg[name], relay._config[name])):
                             cfgchange = True
@@ -157,7 +168,8 @@ class TransferBase(object):
             if port in mu_servers:
                 if ServerPool.get_instance().server_is_run(port) > 0:
                     if cfgchange:
-                        logging.info('db stop server at port [%s] reason: config changed: %s' % (port, cfg))
+                        logging.info(
+                            'db stop server at port [%s] reason: config changed: %s' % (port, cfg))
                         ServerPool.get_instance().cb_del_server(port)
                         self.force_update_transfer.add(port)
                         new_servers[port] = (passwd, cfg)
@@ -171,7 +183,8 @@ class TransferBase(object):
                         self.force_update_transfer.add(port)
                     else:
                         if cfgchange:
-                            logging.info('db stop server at port [%s] reason: config changed: %s' % (port, cfg))
+                            logging.info(
+                                'db stop server at port [%s] reason: config changed: %s' % (port, cfg))
                             ServerPool.get_instance().cb_del_server(port)
                             self.force_update_transfer.add(port)
                             new_servers[port] = (passwd, cfg)
@@ -183,7 +196,8 @@ class TransferBase(object):
             if row['port'] in cur_servers:
                 pass
             else:
-                logging.info('db stop server at port [%s] reason: port not exist' % (row['port']))
+                logging.info(
+                    'db stop server at port [%s] reason: port not exist' % (row['port']))
                 ServerPool.get_instance().cb_del_server(row['port'])
                 self.clear_cache(row['port'])
                 if row['port'] in self.port_uid_table:
@@ -191,27 +205,36 @@ class TransferBase(object):
 
         if len(new_servers) > 0:
             from shadowsocks import eventloop
-            self.event.wait(eventloop.TIMEOUT_PRECISION + eventloop.TIMEOUT_PRECISION / 2)
+            self.event.wait(eventloop.TIMEOUT_PRECISION +
+                            eventloop.TIMEOUT_PRECISION / 2)
             for port in new_servers.keys():
                 passwd, cfg = new_servers[port]
                 self.new_server(port, passwd, cfg)
 
-        logging.debug('db allow users %s \nmu_servers %s' % (allow_users, mu_servers))
+        logging.debug('db allow users %s \nmu_servers %s' %
+                      (allow_users, mu_servers))
         for port in mu_servers:
             ServerPool.get_instance().update_mu_users(port, allow_users)
 
         self.mu_ports = mu_servers
 
     def clear_cache(self, port):
-        if port in self.force_update_transfer: del self.force_update_transfer[port]
-        if port in self.last_get_transfer: del self.last_get_transfer[port]
-        if port in self.last_update_transfer: del self.last_update_transfer[port]
+        if port in self.force_update_transfer:
+            del self.force_update_transfer[port]
+        if port in self.last_get_transfer:
+            del self.last_get_transfer[port]
+        if port in self.last_update_transfer:
+            del self.last_update_transfer[port]
 
     def new_server(self, port, passwd, cfg):
-        protocol = cfg.get('protocol', ServerPool.get_instance().config.get('protocol', 'origin'))
-        method = cfg.get('method', ServerPool.get_instance().config.get('method', 'None'))
-        obfs = cfg.get('obfs', ServerPool.get_instance().config.get('obfs', 'plain'))
-        logging.info('db start server at port [%s] pass [%s] protocol [%s] method [%s] obfs [%s]' % (port, passwd, protocol, method, obfs))
+        protocol = cfg.get(
+            'protocol', ServerPool.get_instance().config.get('protocol', 'origin'))
+        method = cfg.get(
+            'method', ServerPool.get_instance().config.get('method', 'None'))
+        obfs = cfg.get(
+            'obfs', ServerPool.get_instance().config.get('obfs', 'plain'))
+        logging.info('db start server at port [%s] pass [%s] protocol [%s] method [%s] obfs [%s]' % (
+            port, passwd, protocol, method, obfs))
         ServerPool.get_instance().new_server(port, cfg)
 
     def cmp(self, val1, val2):
@@ -292,6 +315,7 @@ class TransferBase(object):
         global db_instance
         db_instance.event.set()
 
+
 class DbTransfer(TransferBase):
     def __init__(self):
         super(DbTransfer, self).__init__()
@@ -309,7 +333,7 @@ class DbTransfer(TransferBase):
 
         for id in dt_transfer.keys():
             transfer = dt_transfer[id]
-            #小于最低更新流量的先不更新
+            # 小于最低更新流量的先不更新
             update_trs = 1024 * (2048 - self.user_pass.get(id, 0) * 64)
             if transfer[0] + transfer[1] < update_trs and id not in self.force_update_transfer:
                 self.user_pass[id] = self.user_pass.get(id, 0) + 1
@@ -317,8 +341,10 @@ class DbTransfer(TransferBase):
             if id in self.user_pass:
                 del self.user_pass[id]
 
-            query_sub_when += ' WHEN %s THEN u+%s' % (id, int(transfer[0] * int(self.cfg["transfer_mul"])))
-            query_sub_when2 += ' WHEN %s THEN d+%s' % (id, int(transfer[1] * int(self.cfg["transfer_mul"])))
+            query_sub_when += ' WHEN %s THEN u+%s' % (
+                id, int(transfer[0] * int(self.cfg["transfer_mul"])))
+            query_sub_when2 += ' WHEN %s THEN d+%s' % (
+                id, int(transfer[1] * int(self.cfg["transfer_mul"])))
             update_transfer[id] = transfer
 
             if query_sub_in is not None:
@@ -329,9 +355,9 @@ class DbTransfer(TransferBase):
         if query_sub_when == '':
             return update_transfer
         query_sql = query_head + ' SET u = CASE port' + query_sub_when + \
-                    ' END, d = CASE port' + query_sub_when2 + \
-                    ' END, t = ' + str(int(last_time)) + \
-                    ' WHERE port IN (%s)' % query_sub_in
+            ' END, d = CASE port' + query_sub_when2 + \
+            ' END, t = ' + str(int(last_time)) + \
+            ' WHERE port IN (%s)' % query_sub_in
         if self.cfg["ssl_enable"] == 1:
             conn = pymysql.connect(host=self.cfg["host"], port=int(self.cfg["port"]),
                                    user=self.cfg["user"], passwd=self.cfg["password"],
@@ -400,7 +426,8 @@ class DbTransfer(TransferBase):
             logging.error('load switchrule.py fail')
 
         cur = conn.cursor()
-        cur.execute("SELECT " + ','.join(keys) + " FROM user where port != 0 and status = 1")
+        cur.execute("SELECT " + ','.join(keys) +
+                    " FROM user where port != 0 and status = 1")
         rows = []
         for r in cur.fetchall():
             d = {}
@@ -446,27 +473,18 @@ class DbTransfer(TransferBase):
                 if len(result) > 0:
                     with database.atomic():
                         SsNodeIp.insert_many(result).execute()
-                    logging.info("push all user one minute connections finished")
+                    logging.info(
+                        "push all user one minute connections finished")
+
 
 class Dbv3Transfer(DbTransfer):
     def __init__(self):
         super(Dbv3Transfer, self).__init__()
-        self.update_node_state = True if get_config().API_INTERFACE != 'legendsockssr' else False
-        if self.update_node_state:
-            self.key_list += ['id']
+
+        self.key_list += ['id']
         self.key_list += ['method']
-        if self.update_node_state:
-            self.ss_node_info_name = 'ss_node_info_log'
-            if get_config().API_INTERFACE == 'sspanelv3ssr':
-                self.key_list += ['obfs', 'protocol']
-            if get_config().API_INTERFACE == 'glzjinmod':
-                self.key_list += ['obfs', 'protocol']
-                self.ss_node_info_name = 'ss_node_info'
-            if get_config().API_INTERFACE == 'ssrpanel':
-                self.key_list += ['obfs', 'protocol']
-                self.ss_node_info_name = 'ss_node_info'
-        else:
-            self.key_list += ['obfs', 'protocol']
+        self.ss_node_info_name = 'node_heartbeat'
+        self.key_list += ['obfs', 'protocol']
         self.start_time = time.time()
 
     def update_all_user(self, dt_transfer):
@@ -483,13 +501,13 @@ class Dbv3Transfer(DbTransfer):
 
         if self.cfg["ssl_enable"] == 1:
             conn = pymysql.connect(host=self.cfg["host"], port=int(self.cfg["port"]),
-                    user=self.cfg["user"], passwd=self.cfg["password"],
-                    db=self.cfg["db"], charset='utf8',
-                    ssl={'ca':self.cfg["ssl_ca"],'cert':self.cfg["ssl_cert"],'key':self.cfg["ssl_key"]})
+                                   user=self.cfg["user"], passwd=self.cfg["password"],
+                                   db=self.cfg["db"], charset='utf8',
+                                   ssl={'ca': self.cfg["ssl_ca"], 'cert': self.cfg["ssl_cert"], 'key': self.cfg["ssl_key"]})
         else:
             conn = pymysql.connect(host=self.cfg["host"], port=int(self.cfg["port"]),
-                    user=self.cfg["user"], passwd=self.cfg["password"],
-                    db=self.cfg["db"], charset='utf8')
+                                   user=self.cfg["user"], passwd=self.cfg["password"],
+                                   db=self.cfg["db"], charset='utf8')
         conn.autocommit(True)
 
         for id in dt_transfer.keys():
@@ -503,21 +521,22 @@ class Dbv3Transfer(DbTransfer):
             if id in self.user_pass:
                 del self.user_pass[id]
 
-            query_sub_when += ' WHEN %s THEN u+%s' % (id, int(transfer[0] * int(self.cfg["transfer_mul"])))
-            query_sub_when2 += ' WHEN %s THEN d+%s' % (id, int(transfer[1] * int(self.cfg["transfer_mul"])))
+            query_sub_when += ' WHEN %s THEN u+%s' % (
+                id, int(transfer[0] * int(self.cfg["transfer_mul"])))
+            query_sub_when2 += ' WHEN %s THEN d+%s' % (
+                id, int(transfer[1] * int(self.cfg["transfer_mul"])))
             update_transfer[id] = transfer
 
-            if self.update_node_state:
-                cur = conn.cursor()
-                try:
-                    if id in self.port_uid_table:
-                        cur.execute("INSERT INTO `user_traffic_log` (`id`, `user_id`, `u`, `d`, `node_id`, `rate`, `traffic`, `log_time`) VALUES (NULL, '" + \
-                            str(self.port_uid_table[id]) + "', '" + str(transfer[0]) + "', '" + str(transfer[1]) + "', '" + \
-                            str(self.cfg["node_id"]) + "', '" + str(self.cfg["transfer_mul"]) + "', '" + \
-                            self.traffic_format((transfer[0] + transfer[1]) * int(self.cfg["transfer_mul"])) + "', unix_timestamp()); ")
-                except:
-                    logging.warn('no `user_traffic_log` in db')
-                cur.close()
+            cur = conn.cursor()
+            try:
+                if id in self.port_uid_table:
+                    cur.execute("INSERT INTO `user_traffic_log` (`id`, `user_id`, `u`, `d`, `node_id`, `rate`, `traffic`, `log_time`) VALUES (NULL, '" +
+                                str(self.port_uid_table[id]) + "', '" + str(transfer[0]) + "', '" + str(transfer[1]) + "', '" +
+                                str(self.cfg["node_id"]) + "', '" + str(self.cfg["transfer_mul"]) + "', '" +
+                                self.traffic_format((transfer[0] + transfer[1]) * int(self.cfg["transfer_mul"])) + "', unix_timestamp()); ")
+            except:
+                logging.warn('no `user_traffic_log` in db')
+            cur.close()
 
             if query_sub_in is not None:
                 query_sub_in += ',%s' % id
@@ -526,9 +545,9 @@ class Dbv3Transfer(DbTransfer):
 
         if query_sub_when != '':
             query_sql = query_head + ' SET u = CASE port' + query_sub_when + \
-                        ' END, d = CASE port' + query_sub_when2 + \
-                        ' END, t = ' + str(int(last_time)) + \
-                        ' WHERE port IN (%s)' % query_sub_in
+                ' END, d = CASE port' + query_sub_when2 + \
+                ' END, t = ' + str(int(last_time)) + \
+                ' WHERE port IN (%s)' % query_sub_in
             cur = conn.cursor()
             try:
                 cur.execute(query_sql)
@@ -536,26 +555,26 @@ class Dbv3Transfer(DbTransfer):
                 logging.error(e)
             cur.close()
 
-        if self.update_node_state:
+        try:
+            cur = conn.cursor()
             try:
-                cur = conn.cursor()
-                try:
-                    cur.execute("INSERT INTO `ss_node_online_log` (`id`, `node_id`, `online_user`, `log_time`) VALUES (NULL, '" + \
-                        str(self.cfg["node_id"]) + "', '" + str(alive_user_count) + "', unix_timestamp()); ")
-                except Exception as e:
-                    logging.error(e)
-                cur.close()
+                cur.execute("INSERT INTO `node_online_log` (`id`, `node_id`, `online_user`, `log_time`) VALUES (NULL, '" +
+                            str(self.cfg["node_id"]) + "', '" + str(alive_user_count) + "', unix_timestamp()); ")
+            except Exception as e:
+                logging.error(e)
+            cur.close()
 
-                cur = conn.cursor()
-                try:
-                    cur.execute("INSERT INTO `" + self.ss_node_info_name + "` (`id`, `node_id`, `uptime`, `load`, `log_time`) VALUES (NULL, '" + \
-                        str(self.cfg["node_id"]) + "', '" + str(self.uptime()) + "', '" + \
-                        str(self.load()) + "', unix_timestamp()); ")
-                except Exception as e:
-                    logging.error(e)
-                cur.close()
-            except:
-                logging.warn('no `ss_node_online_log` or `" + self.ss_node_info_name + "` in db')
+            cur = conn.cursor()
+            try:
+                cur.execute("INSERT INTO `" + self.ss_node_info_name + "` (`id`, `node_id`, `uptime`, `load`, `log_time`) VALUES (NULL, '" +
+                            str(self.cfg["node_id"]) + "', '" + str(self.uptime()) + "', '" +
+                            str(self.load()) + "', unix_timestamp()); ")
+            except Exception as e:
+                logging.error(e)
+            cur.close()
+        except:
+            logging.warn(
+                'no `node_online_log` or `" + self.ss_node_info_name + "` in db')
 
         conn.close()
         return update_transfer
@@ -575,32 +594,34 @@ class Dbv3Transfer(DbTransfer):
 
         cur = conn.cursor()
 
-        if self.update_node_state:
-            node_info_keys = ['traffic_rate']
-            try:
-                cur.execute("SELECT " + ','.join(node_info_keys) +" FROM ss_node where `id`='" + str(self.cfg["node_id"]) + "'")
-                nodeinfo = cur.fetchone()
-            except Exception as e:
-                logging.error(e)
-                nodeinfo = None
+        node_info_keys = ['traffic_rate']
+        try:
+            cur.execute("SELECT " + ','.join(node_info_keys) +
+                        " FROM node where `id`='" + str(self.cfg["node_id"]) + "'")
+            nodeinfo = cur.fetchone()
+        except Exception as e:
+            logging.error(e)
+            nodeinfo = None
 
-            if nodeinfo == None:
-                rows = []
-                cur.close()
-                conn.commit()
-                logging.warn('None result when select node info from ss_node in db, maybe you set the incorrect node id')
-                return rows
+        if nodeinfo == None:
+            rows = []
             cur.close()
+            conn.commit()
+            logging.warn(
+                'None result when select node info from node in db, maybe you set the incorrect node id')
+            return rows
+        cur.close()
 
-            node_info_dict = {}
-            for column in range(len(nodeinfo)):
-                node_info_dict[node_info_keys[column]] = nodeinfo[column]
-            self.cfg['transfer_mul'] = float(node_info_dict['traffic_rate'])
+        node_info_dict = {}
+        for column in range(len(nodeinfo)):
+            node_info_dict[node_info_keys[column]] = nodeinfo[column]
+        self.cfg['transfer_mul'] = float(node_info_dict['traffic_rate'])
 
         cur = conn.cursor()
         try:
             rows = []
-            cur.execute("SELECT " + ','.join(keys) + " FROM user where port != 0 and status = 1")
+            cur.execute("SELECT " + ','.join(keys) +
+                        " FROM user where port != 0 and status = 1")
             for r in cur.fetchall():
                 d = {}
                 for column in range(len(keys)):
@@ -620,12 +641,13 @@ class Dbv3Transfer(DbTransfer):
 
     def traffic_format(self, traffic):
         if traffic < 1024 * 8:
-            return str(int(traffic)) + "B";
+            return str(int(traffic)) + "B"
 
         if traffic < 1024 * 1024 * 2:
-            return str(round((traffic / 1024.0), 2)) + "KB";
+            return str(round((traffic / 1024.0), 2)) + "KB"
 
-        return str(round((traffic / 1048576.0), 2)) + "MB";
+        return str(round((traffic / 1048576.0), 2)) + "MB"
+
 
 class MuJsonTransfer(TransferBase):
     def __init__(self):
@@ -646,7 +668,8 @@ class MuJsonTransfer(TransferBase):
                         row["d"] += dt_transfer[port][1]
 
         if rows:
-            output = json.dumps(rows, sort_keys=True, indent=4, separators=(',', ': '))
+            output = json.dumps(rows, sort_keys=True,
+                                indent=4, separators=(',', ': '))
             with open(config_path, 'r+') as f:
                 f.write(output)
                 f.truncate()
@@ -663,16 +686,17 @@ class MuJsonTransfer(TransferBase):
             for row in rows:
                 try:
                     if 'forbidden_ip' in row:
-                        row['forbidden_ip'] = common.IPNetwork(row['forbidden_ip'])
+                        row['forbidden_ip'] = common.IPNetwork(
+                            row['forbidden_ip'])
                 except Exception as e:
                     logging.error(e)
                 try:
                     if 'forbidden_port' in row:
-                        row['forbidden_port'] = common.PortRange(row['forbidden_port'])
+                        row['forbidden_port'] = common.PortRange(
+                            row['forbidden_port'])
                 except Exception as e:
                     logging.error(e)
 
         if not rows:
             logging.warn('no user in json file')
         return rows
-
