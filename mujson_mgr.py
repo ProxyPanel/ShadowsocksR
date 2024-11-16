@@ -20,7 +20,7 @@ class MuJsonLoader(object):
         try:
             with open(path, 'rb+') as f:
                 l = f.read().decode('utf8')
-        except:
+        except Exception:
             pass
         self.json = json.loads(l)
 
@@ -39,7 +39,7 @@ class MuMgr(object):
         self.config_path = get_config().MUDB_FILE
         try:
             self.server_addr = get_config().SERVER_PUB_ADDR
-        except:
+        except Exception:
             self.server_addr = '127.0.0.1'
         self.data = MuJsonLoader()
 
@@ -52,14 +52,14 @@ class MuMgr(object):
         ret = '127.0.0.1'
         try:
             ret = socket.gethostbyname(socket.getfqdn(socket.gethostname()))
-        except:
+        except Exception:
             pass
         if ret == '127.0.0.1':
             try:
                 import fcntl
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 ret = socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
-            except:
+            except Exception:
                 pass
         return ret
 
@@ -319,7 +319,7 @@ def main():
                 val = float(value)
                 try:
                     val = int(value)
-                except:
+                except Exception:
                     pass
                 user['transfer_enable'] = int(val * 1024) * (1024 ** 2)
             elif key in ('-h', '--help'):

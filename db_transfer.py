@@ -1,4 +1,4 @@
-﻿#!/usr/bin/python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 import logging
@@ -272,7 +272,7 @@ class TransferBase(object):
             resource.setrlimit(resource.RLIMIT_NOFILE, (1000000, 1000000))
             logging.info(
                 'current process RLIMIT_NOFILE resource: soft %d hard %d' % resource.getrlimit(resource.RLIMIT_NOFILE))
-        except:
+        except Exception:
             pass
 
         try:
@@ -301,7 +301,7 @@ class TransferBase(object):
                 except Exception as e:
                     trace = traceback.format_exc()
                     logging.error(trace)
-                    #logging.warn('db thread except:%s' % e)
+                    #logging.warn('db thread except Exception:%s' % e)
                 if db_instance.event.wait(get_config().UPDATE_TIME) or not ServerPool.get_instance().thread.is_alive():
                     break
         except KeyboardInterrupt as e:
@@ -534,7 +534,7 @@ class Dbv3Transfer(DbTransfer):
                                 str(self.port_uid_table[id]) + "', '" + str(transfer[0]) + "', '" + str(transfer[1]) + "', '" +
                                 str(self.cfg["node_id"]) + "', '" + str(self.cfg["transfer_mul"]) + "', '" +
                                 self.traffic_format((transfer[0] + transfer[1]) * int(self.cfg["transfer_mul"])) + "', unix_timestamp()); ")
-            except:
+            except Exception:
                 logging.warn('no `user_traffic_log` in db')
             cur.close()
 
@@ -572,7 +572,7 @@ class Dbv3Transfer(DbTransfer):
             except Exception as e:
                 logging.error(e)
             cur.close()
-        except:
+        except Exception:
             logging.warn(
                 'no `node_online_log` or `" + self.ss_node_info_name + "` in db')
 
