@@ -3,7 +3,7 @@ SSRR
 兼容ProxyPanel & SSRPanel的自改版SSR(R)后端，可兼容原版SS、SSR，本版本是带有IP自动上报功能的
 
 ## 安装
--git clone https://github.com/ZBrettonYe/ProxyPanel_shadowsocksr.git
+- git clone https://github.com/ZBrettonYe/ProxyPanel_shadowsocksr.git
 
 ## 更新软件源
 #### CentOS
@@ -54,7 +54,7 @@ pyenv global 3.7.1
 5.安装shadowsocks依赖
 ```
 cd shadowsocksr
-pip install -r requestment.txt
+pip install -r requestment.txt  --break-system-packages
 ```
 ---
 
@@ -104,5 +104,4 @@ pip install -r requestment.txt
 
 数据库机的 iptables、firewall 得对本节点IP开放
 数据库机的 mysql 的对本节点进行授权（不推荐使用root账号）
-再不懂可以进小群咨询 [我要进小群](https://github.com/ssrpanel/SSRPanel/wiki/%E6%88%91%E8%A6%81%E8%BF%9B%E5%B0%8F%E7%BE%A4)
 

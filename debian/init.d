@@ -7,21 +7,23 @@
 # Default-Stop:      0 1 6
 # Short-Description: Fast tunnel proxy that helps you bypass firewalls
 # Description:       A secure socks5 proxy, designed to protect your Internet traffic.
-#             This package contain local and server part of shadowsocks, a fast,
-#             powerful tunnel proxy to bypass firewalls.
+#                    This package contains local and server parts of shadowsocks, a fast,
+#                    powerful tunnel proxy to bypass firewalls.
 ### END INIT INFO
 
 # Author: Shell.Xu <shell909090@gmail.com>
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC=shadowsocks             # Introduce a short description here
-NAME=shadowsocks             # Introduce the short server's name here
-DAEMON=/usr/bin/ssserver     # Introduce the server's location here
-DAEMON_ARGS=""               # Arguments to run the daemon with
+DESC="Shadowsocks Server"             # Introduce a short description here
+NAME=shadowsocks                     # Introduce the short server's name here
+DAEMON=/usr/bin/python3.7            # Use Python 3.7 to run the daemon
+DAEMON_SCRIPT=/usr/bin/ssserver      # Location of the ssserver script
+DAEMON_ARGS=""                       # Arguments to run the daemon with
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 LOGFILE=/var/log/$NAME.log
+USERID=nobody                        # User ID to run the daemon
 
 # Exit if the package is not installed
 [ -x $DAEMON ] || exit 0
@@ -47,10 +49,11 @@ do_start()
     #   2 if daemon could not be started
     start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON \
         --background --make-pidfile --chdir / --chuid $USERID --no-close --test > /dev/null \
+        -- $DAEMON_SCRIPT $DAEMON_ARGS $DAEMON_OPTS >> $LOGFILE 2>&1 \
         || return 1
     start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON \
         --background --make-pidfile --chdir / --chuid $USERID --no-close -- \
-        $DAEMON_ARGS $DAEMON_OPTS >> $LOGFILE 2>&1 \
+        -- $DAEMON_SCRIPT $DAEMON_ARGS $DAEMON_OPTS >> $LOGFILE 2>&1 \
         || return 2
     # Add code here, if necessary, that waits for the process to be ready
     # to handle requests from services started subsequently which depend

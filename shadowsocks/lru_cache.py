@@ -10,15 +10,14 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-# License for the specific language governing permissions and limitations
-# under the License.
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from __future__ import absolute_import, division, print_function, \
     with_statement
 
-import collections
 import logging
 import time
 
@@ -32,6 +31,8 @@ try:
 except:
     from shadowsocks.ordereddict import OrderedDict
 
+from collections.abc import MutableMapping  # Updated import
+
 # this LRUCache is optimized for concurrency, not QPS
 # n: concurrency, keys stored in the cache
 # m: visits not timed out, proportional to QPS * timeout
@@ -41,7 +42,7 @@ except:
 
 SWEEP_MAX_ITEMS = 1024
 
-class LRUCache(collections.MutableMapping):
+class LRUCache(MutableMapping):  # Updated parent class
     """This class is not thread safe"""
 
     def __init__(self, timeout=60, close_callback=None, *args, **kwargs):
@@ -87,7 +88,7 @@ class LRUCache(collections.MutableMapping):
             for key in self._keys_to_last_time:
                 return key
 
-    def sweep(self, sweep_item_cnt = SWEEP_MAX_ITEMS):
+    def sweep(self, sweep_item_cnt=SWEEP_MAX_ITEMS):
         # O(n - m)
         now = time.time()
         c = 0
