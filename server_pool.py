@@ -26,6 +26,7 @@ import logging
 import struct
 import time
 from shadowsocks import shell, eventloop, tcprelay, udprelay, asyncdns, common
+from shadowsocks.speedtester import SpeedTester
 import threading
 import sys
 import traceback
@@ -46,7 +47,26 @@ class ServerPool(object):
 
     def __init__(self):
         shell.check_python()
+        # 加载配置
         self.config = shell.get_config(False)
+
+        # 如果 shell.get_config 返回 None，则尝试 get_config() 再加载
+        if not isinstance(self.config, dict):
+            self.config = get_config()
+
+        if not isinstance(self.config, dict):
+            raise Exception("配置加载失败：self.config 是 NoneType")
+
+        # 为 port_password 和 additional_ports 中的每个用户设置限速器
+        for section in ["port_password", "additional_ports"]:
+            port_dict = self.config.get(section)
+            if not isinstance(port_dict, dict):
+                continue
+            for port, user_conf in port_dict.items():
+                speed = user_conf.get("speed_limit_per_user", self.config.get("speed_limit_per_user", 0))
+                if speed and speed > 0:
+                    user_conf["speed_limiter"] = SpeedTester(speed)
+
         self.dns_resolver = asyncdns.DNSResolver()
         if not self.config.get('dns_ipv6', False):
             asyncdns.IPV6_CONNECTION_SUPPORT = False
