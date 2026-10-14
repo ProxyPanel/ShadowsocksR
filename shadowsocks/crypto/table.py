@@ -1,4 +1,4 @@
-# !/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2015 clowwindy
 #
@@ -14,10 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
-import string
 import struct
 import hashlib
 
@@ -26,12 +22,8 @@ __all__ = ['ciphers']
 
 cached_tables = {}
 
-if hasattr(string, 'maketrans'):
-    maketrans = string.maketrans
-    translate = string.translate
-else:
-    maketrans = bytes.maketrans
-    translate = bytes.translate
+maketrans = bytes.maketrans
+translate = bytes.translate
 
 
 def get_table(key):
@@ -85,7 +77,7 @@ ciphers = {
 
 
 def test_table_result():
-    from shadowsocks.common import ord
+    from shadowsocks.common import byte_value
     target1 = [
         [60, 53, 84, 138, 217, 94, 88, 23, 39, 242, 219, 35, 12, 157, 165, 181,
          255, 143, 83, 247, 162, 16, 31, 209, 190, 171, 115, 65, 38, 41, 21,
@@ -162,15 +154,15 @@ def test_table_result():
     decrypt_table = maketrans(encrypt_table, maketrans(b'', b''))
 
     for i in range(0, 256):
-        assert (target1[0][i] == ord(encrypt_table[i]))
-        assert (target1[1][i] == ord(decrypt_table[i]))
+        assert (target1[0][i] == byte_value(encrypt_table[i]))
+        assert (target1[1][i] == byte_value(decrypt_table[i]))
 
     encrypt_table = b''.join(get_table(b'barfoo!'))
     decrypt_table = maketrans(encrypt_table, maketrans(b'', b''))
 
     for i in range(0, 256):
-        assert (target2[0][i] == ord(encrypt_table[i]))
-        assert (target2[1][i] == ord(decrypt_table[i]))
+        assert (target2[0][i] == byte_value(encrypt_table[i]))
+        assert (target2[1][i] == byte_value(decrypt_table[i]))
 
 
 def test_encryption():

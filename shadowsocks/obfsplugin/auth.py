@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2015-2015 breakwa11
 #
@@ -14,28 +14,21 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
 import os
-import sys
 import hashlib
 import logging
 import binascii
 import base64
 import time
-import datetime
 import random
 import math
 import struct
 import zlib
 import hmac
-import hashlib
 
-import shadowsocks
 from shadowsocks import common, lru_cache, encrypt
 from shadowsocks.obfsplugin import plain
-from shadowsocks.common import to_bytes, to_str, ord, chr
+from shadowsocks.common import to_bytes
 
 def create_auth_sha1_v4(method):
     return auth_sha1_v4(method)
@@ -116,19 +109,19 @@ class client_queue(object):
 
     def insert(self, connection_id):
         if not self.enable:
-            logging.warn('obfs auth: not enable')
+            logging.warning('obfs auth: not enable')
             return False
         if not self.is_active():
             self.re_enable(connection_id)
         self.update()
         if connection_id < self.front:
-            logging.warn('obfs auth: deprecated id, someone replay attack')
+            logging.warning('obfs auth: deprecated id, someone replay attack')
             return False
         if connection_id > self.front + 0x4000:
-            logging.warn('obfs auth: wrong id')
+            logging.warning('obfs auth: wrong id')
             return False
         if connection_id in self.alloc:
-            logging.warn('obfs auth: duplicate id, someone replay attack')
+            logging.warning('obfs auth: duplicate id, someone replay attack')
             return False
         if self.back <= connection_id:
             self.back = connection_id + 1
@@ -173,7 +166,7 @@ class obfs_auth_v2_data(object):
                     self.client_id[client_id].re_enable(connection_id)
                 return self.client_id[client_id].insert(connection_id)
 
-            logging.warn('auth_sha1_v2: no inactive client')
+            logging.warning('auth_sha1_v2: no inactive client')
             return False
         else:
             return self.client_id[client_id].insert(connection_id)
@@ -200,7 +193,7 @@ class auth_sha1_v4(auth_base):
         self.server_info = server_info
         try:
             max_client = int(server_info.protocol_param)
-        except:
+        except Exception:
             max_client = 64
         self.server_info.data.set_max_client(max_client)
 
@@ -209,14 +202,14 @@ class auth_sha1_v4(auth_base):
             return b'\x01'
 
         if buf_size > 400:
-            rnd_data = os.urandom(common.ord(os.urandom(1)[0]) % 256)
+            rnd_data = os.urandom(common.byte_value(os.urandom(1)[0]) % 256)
         else:
             rnd_data = os.urandom(struct.unpack('>H', os.urandom(2))[0] % 512)
 
         if len(rnd_data) < 128:
-            return common.chr(len(rnd_data) + 1) + rnd_data
+            return common.byte_of(len(rnd_data) + 1) + rnd_data
         else:
-            return common.chr(255) + struct.pack('>H', len(rnd_data) + 3) + rnd_data
+            return common.byte_of(255) + struct.pack('>H', len(rnd_data) + 3) + rnd_data
 
     def pack_data(self, buf):
         data = self.rnd_data(len(buf)) + buf
@@ -288,7 +281,7 @@ class auth_sha1_v4(auth_base):
                 self.recv_buf = b''
                 raise Exception('client_post_decrypt data uncorrect checksum')
 
-            pos = common.ord(self.recv_buf[4])
+            pos = common.byte_value(self.recv_buf[4])
             if pos < 255:
                 pos += 4
             else:
@@ -330,7 +323,7 @@ class auth_sha1_v4(auth_base):
             if sha1data != self.recv_buf[length - 10:length]:
                 logging.error('auth_sha1_v4 data uncorrect auth HMAC-SHA1')
                 return self.not_match_return(self.recv_buf)
-            pos = common.ord(self.recv_buf[6])
+            pos = common.byte_value(self.recv_buf[6])
             if pos < 255:
                 pos += 6
             else:
@@ -389,7 +382,7 @@ class auth_sha1_v4(auth_base):
                 else:
                     raise Exception('server_post_decrype data uncorrect checksum')
 
-            pos = common.ord(self.recv_buf[4])
+            pos = common.byte_value(self.recv_buf[4])
             if pos < 255:
                 pos += 4
             else:
@@ -446,7 +439,7 @@ class obfs_auth_mu_data(object):
                     local_client_id[client_id].re_enable(connection_id)
                 return local_client_id[client_id].insert(connection_id)
 
-            logging.warn('auth_aes128: no inactive client')
+            logging.warning('auth_aes128: no inactive client')
             return False
         else:
             return local_client_id[client_id].insert(connection_id)
@@ -483,7 +476,7 @@ class auth_aes128_sha1(auth_base):
         self.server_info = server_info
         try:
             max_client = int(server_info.protocol_param.split('#')[0])
-        except:
+        except Exception:
             max_client = 64
         self.server_info.data.set_max_client(max_client)
 
@@ -508,7 +501,7 @@ class auth_aes128_sha1(auth_base):
         if rev_len < 0:
             if rev_len > -tcp_mss:
                 return self.trapezoid_random_int(rev_len + tcp_mss, -0.3)
-            return common.ord(os.urandom(1)[0]) % 32
+            return common.byte_value(os.urandom(1)[0]) % 32
         if buf_size > 900:
             return struct.unpack('>H', os.urandom(2))[0] % rev_len
         return self.trapezoid_random_int(rev_len, -0.3)
@@ -517,9 +510,9 @@ class auth_aes128_sha1(auth_base):
         data_len = self.rnd_data_len(buf_size, full_buf_size)
 
         if data_len < 128:
-            return common.chr(data_len + 1) + os.urandom(data_len)
+            return common.byte_of(data_len + 1) + os.urandom(data_len)
 
-        return common.chr(255) + struct.pack('<H', data_len + 1) + os.urandom(data_len - 2)
+        return common.byte_of(255) + struct.pack('<H', data_len + 1) + os.urandom(data_len - 2)
 
     def pack_data(self, buf, full_buf_size):
         data = self.rnd_data(len(buf), full_buf_size) + buf
@@ -548,7 +541,7 @@ class auth_aes128_sha1(auth_base):
                 items = to_bytes(self.server_info.protocol_param).split(b':')
                 self.user_key = self.hashfunc(items[1]).digest()
                 uid = struct.pack('<I', int(items[0]))
-            except:
+            except Exception:
                 pass
         if self.user_key is None:
             self.user_key = self.server_info.key
@@ -614,7 +607,7 @@ class auth_aes128_sha1(auth_base):
                 raise Exception('client_post_decrypt data uncorrect checksum')
 
             self.recv_id = (self.recv_id + 1) & 0xFFFFFFFF
-            pos = common.ord(self.recv_buf[4])
+            pos = common.byte_value(self.recv_buf[4])
             if pos < 255:
                 pos += 4
             else:
@@ -732,7 +725,7 @@ class auth_aes128_sha1(auth_base):
                     raise Exception('server_post_decrype data uncorrect checksum')
 
             self.recv_id = (self.recv_id + 1) & 0xFFFFFFFF
-            pos = common.ord(self.recv_buf[4])
+            pos = common.byte_value(self.recv_buf[4])
             if pos < 255:
                 pos += 4
             else:
@@ -753,7 +746,7 @@ class auth_aes128_sha1(auth_base):
                     items = to_bytes(self.server_info.protocol_param).split(':')
                     self.user_key = self.hashfunc(items[1]).digest()
                     self.user_id = struct.pack('<I', int(items[0]))
-                except:
+                except Exception:
                     pass
             if self.user_key is None:
                 self.user_id = os.urandom(4)

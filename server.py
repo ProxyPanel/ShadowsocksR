@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2015 breakwall
 #
@@ -25,8 +24,6 @@ if __name__ == '__main__':
 
 import db_transfer
 from shadowsocks import shell
-from configloader import get_config
-import logging
 
 
 class MainThread(threading.Thread):
@@ -44,18 +41,15 @@ class MainThread(threading.Thread):
 
 def main():
     shell.check_python()
-    if False:
-        db_transfer.DbTransfer.thread_db()
-    else:
-        thread = MainThread(db_transfer.Dbv3Transfer)
-        thread.start()
-        try:
-            while thread.is_alive():
-                thread.join(10.0)
-        except (KeyboardInterrupt, IOError, OSError) as e:
-            import traceback
-            traceback.print_exc()
-            thread.stop()
+    thread = MainThread(db_transfer.Dbv3Transfer)
+    thread.start()
+    try:
+        while thread.is_alive():
+            thread.join(10.0)
+    except (KeyboardInterrupt, IOError, OSError):
+        import traceback
+        traceback.print_exc()
+        thread.stop()
 
 
 if __name__ == '__main__':

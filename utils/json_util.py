@@ -1,12 +1,10 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 # @Time    : 2018/10/27 13:59
 # @Author  : Sakura
-# @Site    : 
+# @Site    :
 # @File    : net_util.py
 # @Software: PyCharm
-from json import dumps, loads, JSONEncoder, JSONDecoder
-import pickle
+from json import dumps, loads, JSONEncoder
 
 
 class PythonObjectEncoder(JSONEncoder):
@@ -15,12 +13,6 @@ class PythonObjectEncoder(JSONEncoder):
             return JSONEncoder.default(self, obj)
         if isinstance(obj, set):
             return list(obj)
-
-
-def as_python_object(dct):
-    if '_python_object' in dct:
-        return pickle.loads(str(dct['_python_object']))
-    return dct
 
 
 class JsonUtil(object):
@@ -40,5 +32,5 @@ class JsonUtil(object):
         :param str:
         :return:
         """
-        return loads(str, object_hook=as_python_object)
+        return loads(str)
 

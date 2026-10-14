@@ -18,7 +18,7 @@ function run_test {
 for module in local server
 do
 
-command="coverage run -p shadowsocks/$module.py"
+command="${PYTHON:-python3} shadowsocks/$module.py"
 
 mkdir -p tmp
 

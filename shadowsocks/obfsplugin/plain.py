@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2015-2015 breakwa11
 #
@@ -14,15 +14,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
-import os
-import sys
-import hashlib
-import logging
-
-from shadowsocks.common import ord
+from shadowsocks.common import byte_value
 
 def create_obfs(method):
     return plain(method)
@@ -93,12 +85,12 @@ class plain(object):
     def get_head_size(self, buf, def_value):
         if len(buf) < 2:
             return def_value
-        head_type = ord(buf[0]) & 0x7
+        head_type = byte_value(buf[0]) & 0x7
         if head_type == 1:
             return 7
         if head_type == 4:
             return 19
         if head_type == 3:
-            return 4 + ord(buf[1])
+            return 4 + byte_value(buf[1])
         return def_value
 

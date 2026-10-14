@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PYTHON="coverage run -p"
+PYTHON="${PYTHON:-python3}"
 URL=http://127.0.0.1/file
 
 mkdir -p tmp

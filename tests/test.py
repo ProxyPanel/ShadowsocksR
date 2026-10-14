@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2015 clowwindy
 #
@@ -15,18 +14,15 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
-import sys
-import os
-import signal
-import select
-import time
 import argparse
-from subprocess import Popen, PIPE
+import os
+import select
+import signal
+import sys
+import time
+from subprocess import PIPE, Popen
 
-python = ['python']
+python = [sys.executable]
 
 default_url = 'http://localhost/'
 
@@ -94,8 +90,7 @@ try:
                     stage = 3
                 if stage == 4 and fd == p4.stdout:
                     stage = 5
-            if bytes != str:
-                line = str(line, 'utf8')
+            line = line.decode('utf8')
             sys.stderr.write(line)
             if line.find('starting local') >= 0:
                 local_ready = True

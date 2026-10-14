@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2015-2015 breakwa11
 #
@@ -14,25 +14,19 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
 import os
-import sys
 import hashlib
 import logging
 import binascii
 import struct
-import base64
 import time
 import random
 import hmac
-import hashlib
 import string
 
 from shadowsocks import common
 from shadowsocks.obfsplugin import plain
-from shadowsocks.common import to_bytes, to_str, ord
+from shadowsocks.common import byte_value
 from shadowsocks import lru_cache
 
 def create_tls_ticket_auth_obfs(method):
@@ -143,7 +137,7 @@ class tls_ticket_auth(plain.plain):
             ret = b''
             self.recv_buffer += buf
             while len(self.recv_buffer) > 5:
-                if ord(self.recv_buffer[0]) != 0x17:
+                if byte_value(self.recv_buffer[0]) != 0x17:
                     logging.info("data = %s" % (binascii.hexlify(self.recv_buffer)))
                     raise Exception('server_decode appdata error')
                 size = struct.unpack('>H', self.recv_buffer[3:5])[0]
@@ -208,7 +202,7 @@ class tls_ticket_auth(plain.plain):
             ret = b''
             self.recv_buffer += buf
             while len(self.recv_buffer) > 5:
-                if ord(self.recv_buffer[0]) != 0x17 or ord(self.recv_buffer[1]) != 0x3 or ord(self.recv_buffer[2]) != 0x3:
+                if byte_value(self.recv_buffer[0]) != 0x17 or byte_value(self.recv_buffer[1]) != 0x3 or byte_value(self.recv_buffer[2]) != 0x3:
                     logging.info("data = %s" % (binascii.hexlify(self.recv_buffer)))
                     raise Exception('server_decode appdata error')
                 size = struct.unpack('>H', self.recv_buffer[3:5])[0]
@@ -235,10 +229,9 @@ class tls_ticket_auth(plain.plain):
             if hmac.new(self.server_info.key + self.client_id, verify[:verify_len], hashlib.sha1).digest()[:10] != verify[verify_len:verify_len+10]:
                 raise Exception('server_decode data error')
             self.recv_buffer = verify[verify_len + 10:]
-            status = self.handshake_status
             self.handshake_status |= 4
             ret = self.server_decode(b'')
-            return ret;
+            return ret
 
         #raise Exception("handshake data = %s" % (binascii.hexlify(buf)))
         self.recv_buffer += buf
@@ -270,7 +263,7 @@ class tls_ticket_auth(plain.plain):
         buf = buf[2:]
         verifyid = buf[:32]
         buf = buf[32:]
-        sessionid_len = ord(buf[0])
+        sessionid_len = byte_value(buf[0])
         if sessionid_len < 32:
             logging.info("tls_auth wrong sessionid_len")
             return self.decode_error_return(ogn_buf)
@@ -283,7 +276,7 @@ class tls_ticket_auth(plain.plain):
         if self.server_info.obfs_param:
             try:
                 self.max_time_dif = int(self.server_info.obfs_param)
-            except:
+            except Exception:
                 pass
         if self.max_time_dif > 0 and (time_dif < -self.max_time_dif or time_dif > self.max_time_dif \
                 or common.int32(utc_time - self.server_info.data.startup_time) < -self.max_time_dif / 2):

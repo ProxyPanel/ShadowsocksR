@@ -1,43 +1,43 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2018/10/27 14:28
+#!/usr/bin/env python3
+# @Time    : 2018-10-27 14:28
 # @Author  : Sakura
 # @Site    :
 # @File    : __init__.py.py
 # @Software: PyCharm
 
-from peewee import *
+from peewee import CharField, IntegerField, Model, MySQLDatabase, SQL, TextField
 
-from configloader import *
+from configloader import mysql_config
 
+def pymysql_ssl_config(cfg):
+    """ssl_enable=1 就必须走 TLS：没配 ca 时按不校验证书握手，配了 ca 才校验"""
+    ssl_config = {"check_hostname": False, "verify_mode": False}
+    if cfg["ssl_ca"]:
+        ssl_config["ca"] = cfg["ssl_ca"]
+        ssl_config["verify_mode"] = True
+    if cfg["ssl_cert"]:
+        ssl_config["cert"] = cfg["ssl_cert"]
+    if cfg["ssl_key"]:
+        ssl_config["key"] = cfg["ssl_key"]
+    return ssl_config
+
+
+connect_args = {
+    "host": mysql_config["host"],
+    "port": int(mysql_config["port"]),
+    "user": mysql_config["user"],
+    "password": mysql_config["password"],
+    "charset": "utf8mb4",
+}
 if mysql_config['ssl_enable'] == 1:
-    database = MySQLDatabase(mysql_config["db"],
-                             host=mysql_config["host"], port=int(
-                                 mysql_config["port"]),
-                             user=mysql_config["user"], passwd=mysql_config["password"],
-                             charset='utf8',
-                             ssl={'ca': mysql_config["ssl_ca"], 'cert': mysql_config["ssl_cert"],
-                                  'key': mysql_config["ssl_key"]}
-                             )
-else:
-    database = MySQLDatabase(mysql_config["db"],
-                             host=mysql_config["host"], port=int(
-                                 mysql_config["port"]),
-                             user=mysql_config["user"], passwd=mysql_config["password"],
-                             charset='utf8'
-                             )
+    connect_args["ssl"] = pymysql_ssl_config(mysql_config)
 
-
-class UnknownField(object):
-    def __init__(self, *_, **__): pass
+database = MySQLDatabase(mysql_config["db"], **connect_args)
 
 
 class BaseModel(Model):
     class Meta:
         database = database
-
-    def __repr__(self):
-        return self._meta.clou
 
 
 class SsNodeIp(BaseModel):

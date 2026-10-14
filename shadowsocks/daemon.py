@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2014-2015 clowwindy
 #
@@ -14,9 +13,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
-from __future__ import absolute_import, division, print_function, \
-    with_statement
 
 import os
 import sys
@@ -117,7 +113,7 @@ def daemon_start(pid_file, log_file):
         sys.exit(1)
 
     os.setsid()
-    signal.signal(signal.SIG_IGN, signal.SIGHUP)
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
     print('started')
     os.kill(ppid, signal.SIGTERM)

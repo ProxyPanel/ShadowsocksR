@@ -30,19 +30,14 @@ export PATH="/root/.pyenv/bin:$PATH"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 
-# 安装 Python 3.7.1
-pyenv install 3.7.1
-pyenv global 3.7.1
+# 安装 Python 3.14
+pyenv install 3.14
+pyenv global 3.14
 
 # 下载并安装 ShadowsocksR
-wget -c https://github.com/rc452860/shadowsocksr/archive/master.zip
-unzip master.zip
-wget ssrpanel.test/api/node/config -O shadowsocksr-master/usermysql.json
+wget -c https://github.com/ProxyPanel/ShadowsocksR/archive/main.zip
+unzip main.zip
+wget ssrpanel.test/api/node/config -O ShadowsocksR-main/usermysql.json
 
-# 修正文件名错误
-if [ -f shadowsocksr-master/requestment.txt ]; then
-    mv shadowsocksr-master/requestment.txt shadowsocksr-master/requirements.txt
-fi
-
-pip install -r shadowsocksr-master/requirements.txt
-python shadowsocksr-master/server.py
+pip install -r ShadowsocksR-main/requirements.txt
+python3 ShadowsocksR-main/server.py

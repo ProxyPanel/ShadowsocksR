@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2015 clowwindy
 #
@@ -15,23 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
 import logging
 import time
 
 if __name__ == '__main__':
-    import os, sys, inspect
+    import os
+    import sys
+    import inspect
     file_path = os.path.dirname(os.path.realpath(inspect.getfile(inspect.currentframe())))
     sys.path.insert(0, os.path.join(file_path, '../'))
 
-try:
-    from collections import OrderedDict
-except:
-    from shadowsocks.ordereddict import OrderedDict
-
-from collections.abc import MutableMapping  # Updated import
+from collections import OrderedDict
+from collections.abc import MutableMapping
 
 # this LRUCache is optimized for concurrency, not QPS
 # n: concurrency, keys stored in the cache
@@ -42,7 +36,7 @@ from collections.abc import MutableMapping  # Updated import
 
 SWEEP_MAX_ITEMS = 1024
 
-class LRUCache(MutableMapping):  # Updated parent class
+class LRUCache(MutableMapping):
     """This class is not thread safe"""
 
     def __init__(self, timeout=60, close_callback=None, *args, **kwargs):
@@ -55,7 +49,6 @@ class LRUCache(MutableMapping):  # Updated parent class
     def __getitem__(self, key):
         # O(1)
         t = time.time()
-        last_t = self._keys_to_last_time[key]
         del self._keys_to_last_time[key]
         self._keys_to_last_time[key] = t
         return self._store[key]
@@ -70,7 +63,6 @@ class LRUCache(MutableMapping):  # Updated parent class
 
     def __delitem__(self, key):
         # O(1)
-        last_t = self._keys_to_last_time[key]
         del self._store[key]
         del self._keys_to_last_time[key]
 
@@ -111,15 +103,13 @@ class LRUCache(MutableMapping):  # Updated parent class
         return c < SWEEP_MAX_ITEMS
 
     def clear(self, keep):
-        now = time.time()
         c = 0
         while len(self._keys_to_last_time) > keep:
             if len(self._keys_to_last_time) == 0:
                 break
             for key in self._keys_to_last_time:
                 break
-            last_t = self._keys_to_last_time[key]
-            value = self._store[key]
+                value = self._store[key]
             if self.close_callback is not None:
                 self.close_callback(value)
             del self._store[key]

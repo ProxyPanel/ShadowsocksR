@@ -1,0 +1,2 @@
+peewee==4.5.3
+PyMySQL==1.2.3

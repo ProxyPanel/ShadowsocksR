@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2015-2015 breakwa11
 #
@@ -14,27 +14,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
-import os
-import sys
-import hashlib
-import logging
-import binascii
-import base64
-import time
-import datetime
-import random
 import struct
 import zlib
-import hmac
-import hashlib
 
-import shadowsocks
-from shadowsocks import common
 from shadowsocks.obfsplugin import plain
-from shadowsocks.common import to_bytes, to_str, ord, chr
 
 def create_verify_deflate(method):
     return verify_deflate(method)

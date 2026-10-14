@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2015 clowwindy
 #
@@ -14,9 +13,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
-from __future__ import absolute_import, division, print_function, \
-    with_statement
 
 import sys
 import os
@@ -54,7 +50,7 @@ def main():
     else:
         config['port_password'] = {}
         server_port = config['server_port']
-        if type(server_port) == list:
+        if isinstance(server_port, list):
             for a_server_port in server_port:
                 config['port_password'][a_server_port] = config['password']
         else:
@@ -86,12 +82,12 @@ def main():
         obfs_param = config.get("obfs_param", '')
         bind = config.get("out_bind", '')
         bindv6 = config.get("out_bindv6", '')
-        if type(password_obfs) == list:
+        if isinstance(password_obfs, list):
             password = password_obfs[0]
             obfs = common.to_str(password_obfs[1])
             if len(password_obfs) > 2:
                 protocol = common.to_str(password_obfs[2])
-        elif type(password_obfs) == dict:
+        elif isinstance(password_obfs, dict):
             password = password_obfs.get('password', config_password)
             method = common.to_str(password_obfs.get('method', method))
             protocol = common.to_str(password_obfs.get('protocol', protocol))
@@ -108,8 +104,8 @@ def main():
                      (protocol, password, method, obfs, obfs_param))
         if 'server_ipv6' in a_config:
             try:
-                if len(a_config['server_ipv6']) > 2 and a_config['server_ipv6'][0] == b"[" and a_config['server_ipv6'][
-                    -1] == b"]":
+                if len(a_config['server_ipv6']) > 2 and a_config['server_ipv6'][0] == "[" and a_config['server_ipv6'][
+                    -1] == "]":
                     a_config['server_ipv6'] = a_config['server_ipv6'][1:-1]
                 a_config['server_port'] = int(port)
                 a_config['password'] = password
@@ -125,7 +121,7 @@ def main():
                              (a_config['server'], int(port)))
                 tcp_servers.append(tcprelay.TCPRelay(a_config, dns_resolver, False, stat_counter=stat_counter_dict))
                 udp_servers.append(udprelay.UDPRelay(a_config, dns_resolver, False, stat_counter=stat_counter_dict))
-                if a_config['server_ipv6'] == b"::":
+                if a_config['server_ipv6'] == "::":
                     ipv6_ok = True
             except Exception as e:
                 shell.print_exception(e)
@@ -151,7 +147,7 @@ def main():
 
     def run_server():
         def child_handler(signum, _):
-            logging.warn('received SIGQUIT, doing graceful shutting down..')
+            logging.warning('received SIGQUIT, doing graceful shutting down..')
             list(map(lambda s: s.close(next_tick=True),
                      tcp_servers + udp_servers))
 
@@ -211,7 +207,7 @@ def main():
                 for child in children:
                     os.waitpid(child, 0)
         else:
-            logging.warn('worker is only available on Unix/Linux')
+            logging.warning('worker is only available on Unix/Linux')
             run_server()
     else:
         run_server()

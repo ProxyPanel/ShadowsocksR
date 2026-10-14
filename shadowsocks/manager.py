@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2015 clowwindy
 #
@@ -14,9 +13,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
-from __future__ import absolute_import, division, print_function, \
-    with_statement
 
 import errno
 import traceback
@@ -176,7 +172,7 @@ class Manager(object):
         if self._control_client_addr:
             try:
                 self._control_socket.sendto(data, self._control_client_addr)
-            except (socket.error, OSError, IOError) as e:
+            except OSError as e:
                 error_no = eventloop.errno_from_exception(e)
                 if error_no in (errno.EAGAIN, errno.EINPROGRESS,
                                 errno.EWOULDBLOCK):

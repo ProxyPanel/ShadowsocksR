@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2015-2015 breakwa11
 #
@@ -14,22 +14,16 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
 import os
-import sys
-import hashlib
 import logging
 import binascii
 import struct
-import base64
 import datetime
 import random
 
 from shadowsocks import common
 from shadowsocks.obfsplugin import plain
-from shadowsocks.common import to_bytes, to_str, ord, chr
+from shadowsocks.common import to_bytes
 
 def create_http_simple_obfs(method):
     return http_simple(method)
@@ -155,7 +149,6 @@ class http_simple(plain.plain):
         return b''
 
     def get_host_from_http_header(self, buf):
-        ret_buf = b''
         lines = buf.split(b'\r\n')
         if lines and len(lines) > 1:
             for line in lines:
@@ -184,7 +177,7 @@ class http_simple(plain.plain):
             if match_begin(buf, b'GET ') or match_begin(buf, b'POST '):
                 if len(buf) > 65536:
                     self.recv_buffer = None
-                    logging.warn('http_simple: over size')
+                    logging.warning('http_simple: over size')
                     return self.not_match_return(buf)
             else: #not http header, run on original protocol
                 self.recv_buffer = None
@@ -277,7 +270,7 @@ class random_head(plain.plain):
         self.send_buffer += buf
         if not self.has_sent_header:
             self.has_sent_header = True
-            data = os.urandom(common.ord(os.urandom(1)[0]) % 96 + 4)
+            data = os.urandom(common.byte_value(os.urandom(1)[0]) % 96 + 4)
             crc = (0xffffffff - binascii.crc32(data)) & 0xffffffff
             return data + struct.pack('<I', crc)
         if self.raw_trans_recv:
@@ -297,7 +290,7 @@ class random_head(plain.plain):
         if self.has_sent_header:
             return buf
         self.has_sent_header = True
-        return os.urandom(common.ord(os.urandom(1)[0]) % 96 + 4)
+        return os.urandom(common.byte_value(os.urandom(1)[0]) % 96 + 4)
 
     def server_decode(self, buf):
         if self.has_recv_header:

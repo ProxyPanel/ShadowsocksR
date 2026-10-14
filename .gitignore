@@ -1,4 +1,5 @@
 *.py[co]
+__pycache__/
 
 # Packages
 *.egg
@@ -20,6 +21,9 @@ pip-log.txt
 htmlcov
 .coverage*
 .tox
+
+# Virtualenv
+.venv/
 
 #Translations
 *.mo

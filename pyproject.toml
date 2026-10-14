@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shadowsocks"
+version = "3.2.2"
+description = "A fast tunnel proxy that helps you bypass firewalls"
+readme = "README.rst"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "clowwindy", email = "clowwindy42@gmail.com" },
+]
+dependencies = [
+    "peewee>=4.5.3",
+    "PyMySQL>=1.2.3",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Internet :: Proxy Servers",
+]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.17"]
+
+[project.scripts]
+sslocal = "shadowsocks.local:main"
+ssserver = "shadowsocks.server:main"
+
+[project.urls]
+Homepage = "https://github.com/ProxyPanel/ShadowsocksR"
+
+[tool.setuptools]
+packages = ["shadowsocks", "shadowsocks.crypto", "shadowsocks.obfsplugin"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 160
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "W"]
+# 行长不做统一；type(x) == type(y) 与变量名 l 是本仓既有写法，不是缺陷
+ignore = ["E501", "E721", "E741"]

@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2013-2015 clowwindy
 #
@@ -17,9 +16,6 @@
 
 # from ssloop
 # https://github.com/clowwindy/ssloop
-
-from __future__ import absolute_import, division, print_function, \
-    with_statement
 
 import os
 import time
@@ -264,4 +260,4 @@ def errno_from_exception(e):
 # from tornado
 def get_sock_error(sock):
     error_number = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    return socket.error(error_number, os.strerror(error_number))
+    return OSError(error_number, os.strerror(error_number))

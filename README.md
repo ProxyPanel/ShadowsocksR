@@ -3,7 +3,7 @@ SSRR
 兼容ProxyPanel & SSRPanel的自改版SSR(R)后端，可兼容原版SS、SSR，本版本是带有IP自动上报功能的
 
 ## 安装
-- git clone https://github.com/ZBrettonYe/ProxyPanel_shadowsocksr.git
+- git clone https://github.com/ProxyPanel/ShadowsocksR.git
 
 ## 更新软件源
 #### CentOS
@@ -47,29 +47,20 @@ source ~/.bashrc
 
 4.用pyenv安装并启用python
 ```
-pyenv install 3.7.1
-pyenv global 3.7.1
+pyenv install 3.14
+pyenv global 3.14
 ```
 
 5.安装shadowsocks依赖
 ```
-cd shadowsocksr
-pip install -r requestment.txt  --break-system-packages
+cd ShadowsocksR
+pip install -r requirements.txt  --break-system-packages
 ```
 ---
 
-#### Python2.x
-```
-# Ubuntu/Debian:
-apt-get install python-pip
-
-cd shadowsocksr
-pip install -r requestment.txt
-```
-
 #### 编辑节点配置（混淆、协议、限速、IPV6）
 
-    vi user-mysql.json
+    vi user-config.json
 
     protocol 协议，带 _compatible 结尾兼容 原版，直接用原版可以改为 origin
     protocol_param 协议参数，配置了的话，客户端也要一致

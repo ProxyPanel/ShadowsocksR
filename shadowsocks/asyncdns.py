@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2014-2015 clowwindy
 #
@@ -14,9 +13,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
-from __future__ import absolute_import, division, print_function, \
-    with_statement
 
 import os
 import socket
@@ -36,8 +32,6 @@ from shadowsocks import common, lru_cache, eventloop, shell
 CACHE_SWEEP_INTERVAL = 30
 
 VALID_HOSTNAME = re.compile(br"(?!-)[A-Z\d_-]{1,63}(?<!-)$", re.IGNORECASE)
-
-common.patch_socket()
 
 # rfc1035
 # format
@@ -85,7 +79,7 @@ def detect_ipv6_supprot():
             s.connect(('::1', 0))
             print('IPv6 support')
             return True
-        except:
+        except Exception:
             pass
     print('IPv6 not support')
     return False
@@ -102,7 +96,7 @@ def build_address(address):
         l = len(label)
         if l > 63:
             return None
-        results.append(common.chr(l))
+        results.append(common.byte_of(l))
         results.append(label)
     results.append(b'\0')
     return b''.join(results)
@@ -130,7 +124,7 @@ def parse_ip(addrtype, data, length, offset):
 def parse_name(data, offset):
     p = offset
     labels = []
-    l = common.ord(data[p])
+    l = common.byte_value(data[p])
     while l > 0:
         if (l & (128 + 64)) == (128 + 64):
             # pointer
@@ -144,7 +138,7 @@ def parse_name(data, offset):
         else:
             labels.append(data[p + 1:p + 1 + l])
             p += 1 + l
-        l = common.ord(data[p])
+        l = common.byte_value(data[p])
     return p - offset + 1, b'.'.join(labels)
 
 
@@ -280,10 +274,8 @@ class DNSResolver(object):
         if type(black_hostname_list) != list:
             self._black_hostname_list = []
         else:
-            self._black_hostname_list = list(map(
-                (lambda t: t if type(t) == bytes else t.encode('utf8')),
-                black_hostname_list
-            ))
+            # 配置里是 str，DNS 报文里的主机名是 bytes，按字节流比对
+            self._black_hostname_list = [t.encode('utf8') for t in black_hostname_list]
         logging.info('black_hostname_list init as : ' + str(self._black_hostname_list))
         self._sock = None
         self._servers = None
@@ -435,7 +427,7 @@ class DNSResolver(object):
         else:
             data, addr = sock.recvfrom(1024)
             if addr not in self._servers:
-                logging.warn('received a packet other than our dns')
+                logging.warning('received a packet other than our dns')
                 return
             self._handle_data(data)
 
@@ -483,15 +475,6 @@ class DNSResolver(object):
             if not is_valid_hostname(hostname):
                 callback(None, Exception('invalid hostname: %s' % hostname))
                 return
-            if False:
-                addrs = socket.getaddrinfo(hostname, 0, 0,
-                                           socket.SOCK_DGRAM, socket.SOL_UDP)
-                if addrs:
-                    af, socktype, proto, canonname, sa = addrs[0]
-                    logging.debug('DNS resolve %s %s' % (hostname, sa[0]))
-                    self._cache[hostname] = sa[0]
-                    callback((hostname, sa[0]), None)
-                    return
             arr = self._hostname_to_cb.get(hostname, None)
             if not arr:
                 if IPV6_CONNECTION_SUPPORT:

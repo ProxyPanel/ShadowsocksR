@@ -1,4 +1,4 @@
-FROM alpine:3.6
+FROM python:3.14-alpine
 
 ENV SERVER_ADDR     0.0.0.0
 ENV SERVER_PORT     51348
@@ -11,21 +11,13 @@ ENV TIMEOUT         300
 ENV DNS_ADDR        8.8.8.8
 ENV DNS_ADDR_2      8.8.4.4
 
-ARG BRANCH=manyuser
-ARG WORK=~
+RUN apk add --no-cache libsodium
 
+COPY . /app
 
-RUN apk --no-cache add python \
-    libsodium \
-    wget
-
-
-RUN mkdir -p $WORK && \
-    wget -qO- --no-check-certificate https://github.com/shadowsocksr/shadowsocksr/archive/$BRANCH.tar.gz | tar -xzf - -C $WORK
-
-
-WORKDIR $WORK/shadowsocksr-$BRANCH/shadowsocks
-
+WORKDIR /app/shadowsocks
 
 EXPOSE $SERVER_PORT
-CMD python server.py -p $SERVER_PORT -k $PASSWORD -m $METHOD -O $PROTOCOL -o $OBFS -G $PROTOCOLPARAM
+
+# 命令行只取这六个变量，其余运行参数来自 /app/config.json；DNS_ADDR/DNS_ADDR_2 不参与单用户入口
+CMD ["sh", "-c", "exec python server.py -p \"$SERVER_PORT\" -k \"$PASSWORD\" -m \"$METHOD\" -O \"$PROTOCOL\" -o \"$OBFS\" -G \"$PROTOCOLPARAM\""]

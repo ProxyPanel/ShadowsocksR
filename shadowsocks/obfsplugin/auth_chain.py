@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2015-2015 breakwa11
 #
@@ -15,25 +14,20 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
 import hashlib
 import logging
 import binascii
 import base64
 import time
-import datetime
 import random
 import math
 import struct
 import hmac
 import bisect
 
-import shadowsocks
 from shadowsocks import common, lru_cache, encrypt
 from shadowsocks.obfsplugin import plain
-from shadowsocks.common import to_bytes, to_str, ord, chr
+from shadowsocks.common import to_bytes, byte_of
 from shadowsocks.crypto import openssl
 
 rand_bytes = openssl.rand_bytes
@@ -177,19 +171,19 @@ class client_queue(object):
 
     def insert(self, connection_id):
         if not self.enable:
-            logging.warn('obfs auth: not enable')
+            logging.warning('obfs auth: not enable')
             return False
         if not self.is_active():
             self.re_enable(connection_id)
         self.update()
         if connection_id < self.front:
-            logging.warn('obfs auth: deprecated id, someone replay attack')
+            logging.warning('obfs auth: deprecated id, someone replay attack')
             return False
         if connection_id > self.front + 0x4000:
-            logging.warn('obfs auth: wrong id')
+            logging.warning('obfs auth: wrong id')
             return False
         if connection_id in self.alloc:
-            logging.warn('obfs auth: duplicate id, someone replay attack')
+            logging.warning('obfs auth: duplicate id, someone replay attack')
             return False
         if self.back <= connection_id:
             self.back = connection_id + 1
@@ -245,7 +239,7 @@ class obfs_auth_chain_data(object):
                     local_client_id[client_id].re_enable(connection_id)
                 return local_client_id[client_id].insert(connection_id)
 
-            logging.warn(self.name + ': no inactive client')
+            logging.warning(self.name + ': no inactive client')
             return False
         else:
             return local_client_id[client_id].insert(connection_id)
@@ -294,7 +288,7 @@ class auth_chain_a(auth_base):
         self.server_info = server_info
         try:
             max_client = int(server_info.protocol_param.split('#')[0])
-        except:
+        except Exception:
             max_client = 64
         self.server_info.data.set_max_client(max_client)
 
@@ -380,7 +374,7 @@ class auth_chain_a(auth_base):
                 items = to_bytes(self.server_info.protocol_param).split(b':')
                 self.user_key = items[1]
                 uid = struct.pack('<I', int(items[0]))
-            except:
+            except Exception:
                 uid = rand_bytes(4)
         else:
             uid = rand_bytes(4)
@@ -417,7 +411,6 @@ class auth_chain_a(auth_base):
 
     def client_pre_encrypt(self, buf):
         ret = b''
-        ogn_data_len = len(buf)
         if not self.has_sent_header:
             head_size = self.get_head_size(buf, 30)
             datalen = min(len(buf), random.randint(0, 31) + head_size)
@@ -606,7 +599,7 @@ class auth_chain_a(auth_base):
                     items = to_bytes(self.server_info.protocol_param).split(':')
                     self.user_key = self.hashfunc(items[1]).digest()
                     self.user_id = struct.pack('<I', int(items[0]))
-                except:
+                except Exception:
                     pass
             if self.user_key is None:
                 self.user_id = rand_bytes(4)
@@ -710,7 +703,7 @@ class auth_chain_b(auth_chain_a):
         self.server_info = server_info
         try:
             max_client = int(server_info.protocol_param.split('#')[0])
-        except:
+        except Exception:
             max_client = 64
         self.server_info.data.set_max_client(max_client)
         self.init_data_size(self.server_info.key)
@@ -766,7 +759,7 @@ class auth_chain_c(auth_chain_b):
         self.server_info = server_info
         try:
             max_client = int(server_info.protocol_param.split('#')[0])
-        except:
+        except Exception:
             max_client = 64
         self.server_info.data.set_max_client(max_client)
         self.init_data_size(self.server_info.key)
@@ -829,7 +822,7 @@ class auth_chain_d(auth_chain_b):
         self.server_info = server_info
         try:
             max_client = int(server_info.protocol_param.split('#')[0])
-        except:
+        except Exception:
             max_client = 64
         self.server_info.data.set_max_client(max_client)
         self.init_data_size(self.server_info.key)
@@ -877,16 +870,16 @@ class auth_chain_f(auth_chain_e):
         self.server_info = server_info
         try:
             max_client = int(server_info.protocol_param.split('#')[0])
-        except:
+        except Exception:
             max_client = 64
         self.server_info.data.set_max_client(max_client)
         try:
             self.key_change_interval = int(server_info.protocol_param.split('#')[1])  # config are in second
-        except:
+        except Exception:
             self.key_change_interval = 60 * 60 * 24  # a day by second
 
     def on_recv_auth_data(self, utc_time):
-        self.key_change_datetime_key = int(utc_time / self.key_change_interval)
+        self.key_change_datetime_key = utc_time // self.key_change_interval
         self.key_change_datetime_key_bytes = []  # big bit first list
         for i in range(7, -1, -1):  # big-ending compare to c
             self.key_change_datetime_key_bytes.append((self.key_change_datetime_key >> (8 * i)) & 0xFF)
@@ -898,12 +891,12 @@ class auth_chain_f(auth_chain_e):
         random = xorshift128plus()
         # key xor with key_change_datetime_key
         new_key = bytearray(key)
-        new_key_str = ''
+        new_key_str = b''
         for i in range(0, 8):
             new_key[i] ^= self.key_change_datetime_key_bytes[i]
-            new_key_str += chr(new_key[i])
+            new_key_str += byte_of(new_key[i])
         for i in range(8, len(new_key)):
-            new_key_str += chr(new_key[i])
+            new_key_str += byte_of(new_key[i])
         random.init_from_bin(to_bytes(new_key_str))
         # 补全数组长为12~24-1
         list_len = random.next() % (8 + 16) + (4 + 8)

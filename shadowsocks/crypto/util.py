@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2015 clowwindy
 #
@@ -14,8 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
 
 import os
 import logging
@@ -70,23 +68,22 @@ def find_library(possible_lib_names, search_symbol, library_name):
 
     # always find lib on extend path that to avoid ```CDLL()``` failed on some strange linux environment
     # in that case ```ctypes.util.find_library()``` have different find path from ```CDLL()```
-    if True:
-        # We may get here when find_library fails because, for example,
-        # the user does not have sufficient privileges to access those
-        # tools underlying find_library on linux.
-        import glob
+    # We may get here when find_library fails because, for example,
+    # the user does not have sufficient privileges to access those
+    # tools underlying find_library on linux.
+    import glob
 
-        for name in lib_names:
-            patterns = [
-                '/usr/local/lib*/lib%s.*' % name,
-                '/usr/lib*/lib%s.*' % name,
-                'lib%s.*' % name,
-                '%s.dll' % name]
+    for name in lib_names:
+        patterns = [
+            '/usr/local/lib*/lib%s.*' % name,
+            '/usr/lib*/lib%s.*' % name,
+            'lib%s.*' % name,
+            '%s.dll' % name]
 
-            for pat in patterns:
-                files = glob.glob(pat)
-                if files:
-                    paths.extend(files)
+        for pat in patterns:
+            files = glob.glob(pat)
+            if files:
+                paths.extend(files)
     for path in paths:
         try:
             lib = CDLL(path)
@@ -94,7 +91,7 @@ def find_library(possible_lib_names, search_symbol, library_name):
                 logging.info('loading %s from %s', library_name, path)
                 return lib
             else:
-                logging.warn('can\'t find symbol %s in %s', search_symbol,
+                logging.warning('can\'t find symbol %s in %s', search_symbol,
                              path)
         except Exception:
             if path == paths[-1]:

@@ -1,21 +1,26 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
 import logging
 import time
-import sys
 from server_pool import ServerPool
 import traceback
 from shadowsocks import common, shell, lru_cache, obfs
-from configloader import load_config, get_config
+from configloader import load_config, get_config, get_mysql_config
 import importloader
 import copy
-from database import *
+from database import connect_args, database, SsNodeIp
 import pymysql
-from utils.net_util import *
+from utils.net_util import from_map_ipv6_get_ipv4
 
 switchrule = None
 db_instance = None
+
+
+def _connect_db():
+    # 字符集与 TLS 判据的唯一来源是 database.connect_args，裸 cursor 与 peewee 两条路径共用
+    kwargs = dict(connect_args)
+    kwargs['database'] = get_mysql_config()["db"]
+    return pymysql.connect(**kwargs)
 
 
 class TransferBase(object):
@@ -94,7 +99,7 @@ class TransferBase(object):
         try:
             switchrule = importloader.load('switchrule')
             keymap = switchrule.getRowMap()
-        except Exception as e:
+        except Exception:
             logging.error('load switchrule.py fail')
         cur_servers = {}
         new_servers = {}
@@ -105,34 +110,29 @@ class TransferBase(object):
             try:
                 allow = switchrule.isTurnOn(
                     row) and row['enable'] == 1 and row['u'] + row['d'] < row['transfer_enable']
-            except Exception as e:
+            except Exception:
                 allow = False
 
             port = row['port']
-            passwd = common.to_bytes(row['passwd'])
-            if hasattr(passwd, 'encode'):
-                passwd = passwd.encode('utf-8')
+            passwd = common.to_str(row['passwd'])
             cfg = {'password': passwd}
             if 'id' in row:
                 self.port_uid_table[row['port']] = row['id']
 
             read_config_keys = ['method', 'obfs', 'obfs_param', 'protocol', 'protocol_param',
                                 'forbidden_ip', 'forbidden_port', 'speed_limit_per_con', 'speed_limit_per_user']
+            # 文本列归一成 str，限速两列保持数值类型（SpeedTester 按数值比较）
+            text_config_keys = ('method', 'obfs', 'obfs_param', 'protocol', 'protocol_param',
+                                'forbidden_ip', 'forbidden_port')
             for name in read_config_keys:
                 if name in row and row[name]:
-                    if name in keymap:
-                        cfg[keymap[name]] = row[name]
-                    else:
-                        cfg[name] = row[name]
+                    target = keymap.get(name, name)
+                    value = row[name]
+                    if target in text_config_keys:
+                        value = common.to_str(value)
+                    cfg[target] = value
 
             merge_config_keys = ['password'] + read_config_keys
-            for name in cfg.keys():
-                if hasattr(cfg[name], 'encode'):
-                    try:
-                        cfg[name] = cfg[name].encode('utf-8')
-                    except Exception as e:
-                        logging.warning(
-                            'encode cfg key "%s" fail, val "%s"' % (name, cfg[name]))
 
             if port not in cur_servers:
                 cur_servers[port] = passwd
@@ -238,10 +238,7 @@ class TransferBase(object):
         ServerPool.get_instance().new_server(port, cfg)
 
     def cmp(self, val1, val2):
-        if type(val1) is bytes:
-            val1 = common.to_str(val1)
-        if type(val2) is bytes:
-            val2 = common.to_str(val2)
+        # cfg 与 relay._config 两侧的文本列都是 str、数值列都是驱动返回的数值类型
         return val1 == val2
 
     def push_all_port_and_connect(self):
@@ -298,13 +295,12 @@ class TransferBase(object):
                     db_instance.del_server_out_of_bound_safe(last_rows, rows)
                     db_instance.push_all_port_and_connect()
                     last_rows = rows
-                except Exception as e:
+                except Exception:
                     trace = traceback.format_exc()
                     logging.error(trace)
-                    #logging.warn('db thread except Exception:%s' % e)
                 if db_instance.event.wait(get_config().UPDATE_TIME) or not ServerPool.get_instance().thread.is_alive():
                     break
-        except KeyboardInterrupt as e:
+        except KeyboardInterrupt:
             pass
         db_instance.del_servers()
         ServerPool.get_instance().stop()
@@ -322,85 +318,10 @@ class DbTransfer(TransferBase):
         self.user_pass = {}  # 记录更新此用户流量时被跳过多少次
         self.cfg = get_mysql_config()
 
-    def update_all_user(self, dt_transfer):
-        update_transfer = {}
-
-        query_head = 'UPDATE user'
-        query_sub_when = ''
-        query_sub_when2 = ''
-        query_sub_in = None
-        last_time = time.time()
-
-        for id in dt_transfer.keys():
-            transfer = dt_transfer[id]
-            # 小于最低更新流量的先不更新
-            update_trs = 1024 * (2048 - self.user_pass.get(id, 0) * 64)
-            if transfer[0] + transfer[1] < update_trs and id not in self.force_update_transfer:
-                self.user_pass[id] = self.user_pass.get(id, 0) + 1
-                continue
-            if id in self.user_pass:
-                del self.user_pass[id]
-
-            query_sub_when += ' WHEN %s THEN u+%s' % (
-                id, int(transfer[0] * int(self.cfg["transfer_mul"])))
-            query_sub_when2 += ' WHEN %s THEN d+%s' % (
-                id, int(transfer[1] * int(self.cfg["transfer_mul"])))
-            update_transfer[id] = transfer
-
-            if query_sub_in is not None:
-                query_sub_in += ',%s' % id
-            else:
-                query_sub_in = '%s' % id
-
-        if query_sub_when == '':
-            return update_transfer
-        query_sql = query_head + ' SET u = CASE port' + query_sub_when + \
-            ' END, d = CASE port' + query_sub_when2 + \
-            ' END, t = ' + str(int(last_time)) + \
-            ' WHERE port IN (%s)' % query_sub_in
-        if self.cfg["ssl_enable"] == 1:
-            conn = pymysql.connect(host=self.cfg["host"], port=int(self.cfg["port"]),
-                                   user=self.cfg["user"], passwd=self.cfg["password"],
-                                   db=self.cfg["db"], charset='utf8',
-                                   ssl={'ca': self.cfg["ssl_ca"], 'cert': self.cfg["ssl_cert"],
-                                        'key': self.cfg["ssl_key"]})
-        else:
-            conn = pymysql.connect(host=self.cfg["host"], port=int(self.cfg["port"]),
-                                   user=self.cfg["user"], passwd=self.cfg["password"],
-                                   db=self.cfg["db"], charset='utf8')
-
-        try:
-            cur = conn.cursor()
-            try:
-                cur.execute(query_sql)
-            except Exception as e:
-                logging.error(e)
-                update_transfer = {}
-
-            cur.close()
-            conn.commit()
-        except Exception as e:
-            logging.error(e)
-            update_transfer = {}
-        finally:
-            conn.close()
-            logging.info("update user info finished")
-
-        return update_transfer
-
     def pull_db_all_user(self):
 
         # 数据库所有用户信息
-        if self.cfg["ssl_enable"] == 1:
-            conn = pymysql.connect(host=self.cfg["host"], port=int(self.cfg["port"]),
-                                   user=self.cfg["user"], passwd=self.cfg["password"],
-                                   db=self.cfg["db"], charset='utf8',
-                                   ssl={'ca': self.cfg["ssl_ca"], 'cert': self.cfg["ssl_cert"],
-                                        'key': self.cfg["ssl_key"]})
-        else:
-            conn = pymysql.connect(host=self.cfg["host"], port=int(self.cfg["port"]),
-                                   user=self.cfg["user"], passwd=self.cfg["password"],
-                                   db=self.cfg["db"], charset='utf8')
+        conn = _connect_db()
 
         try:
             rows = self.pull_db_users(conn)
@@ -409,37 +330,11 @@ class DbTransfer(TransferBase):
             conn.close()
 
         if not rows:
-            logging.warn('no user in db')
-        return rows
-
-    def pull_db_users(self, conn):
-        keys = copy.copy(self.key_list)
-        try:
-            switchrule = importloader.load('switchrule')
-            keymap = switchrule.getRowMap()
-            for key in keymap:
-                if keymap[key] in keys:
-                    keys.remove(keymap[key])
-                keys.append(key)
-            keys = switchrule.getKeys(keys)
-        except Exception as e:
-            logging.error('load switchrule.py fail')
-
-        cur = conn.cursor()
-        cur.execute("SELECT " + ','.join(keys) +
-                    " FROM user where port != 0 and status = 1")
-        rows = []
-        for r in cur.fetchall():
-            d = {}
-            for column in range(len(keys)):
-                d[keys[column]] = r[column]
-            rows.append(d)
-        cur.close()
+            logging.warning('no user in db')
         return rows
 
     def push_all_port_and_connect(self):
         config = shell.get_config(False)
-        keys = ['node_id', 'port', 'type', 'ip']
         tcp_poll = None
         udp_poll = None
         if 'server_ipv6' in config:
@@ -499,15 +394,7 @@ class Dbv3Transfer(DbTransfer):
         alive_user_count = len(self.onlineuser_cache)
         bandwidth_thistime = 0
 
-        if self.cfg["ssl_enable"] == 1:
-            conn = pymysql.connect(host=self.cfg["host"], port=int(self.cfg["port"]),
-                                   user=self.cfg["user"], passwd=self.cfg["password"],
-                                   db=self.cfg["db"], charset='utf8',
-                                   ssl={'ca': self.cfg["ssl_ca"], 'cert': self.cfg["ssl_cert"], 'key': self.cfg["ssl_key"]})
-        else:
-            conn = pymysql.connect(host=self.cfg["host"], port=int(self.cfg["port"]),
-                                   user=self.cfg["user"], passwd=self.cfg["password"],
-                                   db=self.cfg["db"], charset='utf8')
+        conn = _connect_db()
         conn.autocommit(True)
 
         for id in dt_transfer.keys():
@@ -535,7 +422,7 @@ class Dbv3Transfer(DbTransfer):
                                 str(self.cfg["node_id"]) + "', '" + str(self.cfg["transfer_mul"]) + "', '" +
                                 self.traffic_format((transfer[0] + transfer[1]) * int(self.cfg["transfer_mul"])) + "', unix_timestamp()); ")
             except Exception:
-                logging.warn('no `user_traffic_log` in db')
+                logging.warning('no `user_traffic_log` in db')
             cur.close()
 
             if query_sub_in is not None:
@@ -573,7 +460,7 @@ class Dbv3Transfer(DbTransfer):
                 logging.error(e)
             cur.close()
         except Exception:
-            logging.warn(
+            logging.warning(
                 'no `node_online_log` or `" + self.ss_node_info_name + "` in db')
 
         conn.close()
@@ -589,7 +476,7 @@ class Dbv3Transfer(DbTransfer):
                     keys.remove(keymap[key])
                 keys.append(key)
             keys = switchrule.getKeys(keys)
-        except Exception as e:
+        except Exception:
             logging.error('load switchrule.py fail')
 
         cur = conn.cursor()
@@ -603,11 +490,11 @@ class Dbv3Transfer(DbTransfer):
             logging.error(e)
             nodeinfo = None
 
-        if nodeinfo == None:
+        if nodeinfo is None:
             rows = []
             cur.close()
             conn.commit()
-            logging.warn(
+            logging.warning(
                 'None result when select node info from node in db, maybe you set the incorrect node id')
             return rows
         cur.close()
@@ -647,56 +534,3 @@ class Dbv3Transfer(DbTransfer):
             return str(round((traffic / 1024.0), 2)) + "KB"
 
         return str(round((traffic / 1048576.0), 2)) + "MB"
-
-
-class MuJsonTransfer(TransferBase):
-    def __init__(self):
-        super(MuJsonTransfer, self).__init__()
-
-    def update_all_user(self, dt_transfer):
-        import json
-        rows = None
-
-        config_path = get_config().MUDB_FILE
-        with open(config_path, 'rb+') as f:
-            rows = json.loads(f.read().decode('utf8'))
-            for row in rows:
-                if "port" in row:
-                    port = row["port"]
-                    if port in dt_transfer:
-                        row["u"] += dt_transfer[port][0]
-                        row["d"] += dt_transfer[port][1]
-
-        if rows:
-            output = json.dumps(rows, sort_keys=True,
-                                indent=4, separators=(',', ': '))
-            with open(config_path, 'r+') as f:
-                f.write(output)
-                f.truncate()
-
-        return dt_transfer
-
-    def pull_db_all_user(self):
-        import json
-        rows = None
-
-        config_path = get_config().MUDB_FILE
-        with open(config_path, 'rb+') as f:
-            rows = json.loads(f.read().decode('utf8'))
-            for row in rows:
-                try:
-                    if 'forbidden_ip' in row:
-                        row['forbidden_ip'] = common.IPNetwork(
-                            row['forbidden_ip'])
-                except Exception as e:
-                    logging.error(e)
-                try:
-                    if 'forbidden_port' in row:
-                        row['forbidden_port'] = common.PortRange(
-                            row['forbidden_port'])
-                except Exception as e:
-                    logging.error(e)
-
-        if not rows:
-            logging.warn('no user in json file')
-        return rows

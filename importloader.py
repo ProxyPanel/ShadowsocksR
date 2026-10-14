@@ -1,21 +1,14 @@
-﻿#!/usr/bin/python
-# -*- coding: utf-8 -*-
+﻿#!/usr/bin/env python3
+import importlib
+
 
 def load(name):
     try:
-        obj = __import__(name)
-        reload(obj)
-        return obj
-    except:
-        pass
+        obj = importlib.import_module(name)
+        return importlib.reload(obj)
+    except Exception:
+        return None
 
-    try:
-        import importlib
-        obj = importlib.__import__(name)
-        importlib.reload(obj)
-        return obj
-    except:
-        pass
 
 def loads(namelist):
     for name in namelist:

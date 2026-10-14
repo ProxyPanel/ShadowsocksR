@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2012-2015 clowwindy
 #
@@ -13,9 +13,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
-from __future__ import absolute_import, division, print_function, \
-    with_statement
 
 import os
 import sys
@@ -36,7 +33,7 @@ method_supported.update(table.ciphers)
 def random_string(length):
     try:
         return os.urandom(length)
-    except NotImplementedError as e:
+    except NotImplementedError:
         return openssl.rand_bytes(length)
 
 cached_keys = lru_cache.LRUCache(timeout=180)
@@ -222,7 +219,7 @@ def test_encryptor():
     from os import urandom
     plain = urandom(10240)
     for method in CIPHERS_TO_TEST:
-        logging.warn(method)
+        logging.warning(method)
         encryptor = Encryptor(b'key', method)
         decryptor = Encryptor(b'key', method)
         cipher = encryptor.encrypt(plain)
@@ -234,7 +231,7 @@ def test_encrypt_all():
     from os import urandom
     plain = urandom(10240)
     for method in CIPHERS_TO_TEST:
-        logging.warn(method)
+        logging.warning(method)
         cipher = encrypt_all(b'key', method, 1, plain)
         plain2 = encrypt_all(b'key', method, 0, cipher)
         assert plain == plain2

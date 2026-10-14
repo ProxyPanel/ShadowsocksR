@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2013-2015 clowwindy
 #
@@ -15,9 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
 import socket
 import struct
 import logging
@@ -26,36 +22,29 @@ import re
 
 from shadowsocks import lru_cache
 
-def compat_ord(s):
-    if type(s) == int:
-        return s
-    return _ord(s)
+def byte_value(b):
+    """bytes/str 的单元素取下标可能是 int 或 bytes，统一成 0-255 的整数"""
+    if isinstance(b, int):
+        return b
+    return ord(b)
 
 
-def compat_chr(d):
-    if bytes == str:
-        return _chr(d)
-    return bytes([d])
+def byte_of(n):
+    """整数值 -> 长度 1 的 bytes"""
+    return bytes([n])
 
-
-_ord = ord
-_chr = chr
-ord = compat_ord
-chr = compat_chr
 
 connect_log = logging.debug
 
 def to_bytes(s):
-    if bytes != str:
-        if type(s) == str:
-            return s.encode('utf-8')
+    if isinstance(s, str):
+        return s.encode('utf-8')
     return s
 
 
 def to_str(s):
-    if bytes != str:
-        if type(s) == bytes:
-            return s.decode('utf-8')
+    if isinstance(s, bytes):
+        return s.decode('utf-8')
     return s
 
 def int32(x):
@@ -74,7 +63,7 @@ def inet_ntop(family, ipstr):
         return to_bytes(socket.inet_ntoa(ipstr))
     elif family == socket.AF_INET6:
         import re
-        v6addr = ':'.join(('%02X%02X' % (ord(i), ord(j))).lstrip('0')
+        v6addr = ':'.join(('%02X%02X' % (byte_value(i), byte_value(j))).lstrip('0')
                           for i, j in zip(ipstr[::2], ipstr[1::2]))
         v6addr = re.sub('::+', '::', v6addr, count=1)
         return to_bytes(v6addr)
@@ -88,7 +77,7 @@ def inet_pton(family, addr):
         if '.' in addr:  # a v4 addr
             v4addr = addr[addr.rindex(':') + 1:]
             v4addr = socket.inet_aton(v4addr)
-            v4addr = ['%02X' % ord(x) for x in v4addr]
+            v4addr = ['%02X' % byte_value(x) for x in v4addr]
             v4addr.insert(2, ':')
             newaddr = addr[:addr.rindex(':') + 1] + ''.join(v4addr)
             return inet_pton(family, newaddr)
@@ -104,7 +93,7 @@ def inet_pton(family, addr):
                     else:
                         break
                 break
-        return b''.join((chr(i // 256) + chr(i % 256)) for i in dbyts)
+        return b''.join((byte_of(i // 256) + byte_of(i % 256)) for i in dbyts)
     else:
         raise RuntimeError("What family?")
 
@@ -112,7 +101,7 @@ def inet_pton(family, addr):
 def is_ip(address):
     for family in (socket.AF_INET, socket.AF_INET6):
         try:
-            if type(address) != str:
+            if not isinstance(address, str):
                 address = address.decode('utf8')
             inet_pton(family, address)
             return family
@@ -124,9 +113,9 @@ def is_ip(address):
 def sync_str_bytes(obj, target_example):
     """sync (obj)'s type to (target_example)'s type"""
     if type(obj) != type(target_example):
-        if type(target_example) == str:
+        if isinstance(target_example, str):
             obj = to_str(obj)
-        if type(target_example) == bytes:
+        if isinstance(target_example, bytes):
             obj = to_bytes(obj)
     return obj
 
@@ -138,17 +127,6 @@ def match_regex(regex, text):
     for item in regex.findall(text):
         return True
     return False
-
-
-def patch_socket():
-    if not hasattr(socket, 'inet_pton'):
-        socket.inet_pton = inet_pton
-
-    if not hasattr(socket, 'inet_ntop'):
-        socket.inet_ntop = inet_ntop
-
-
-patch_socket()
 
 
 ADDRTYPE_IPV4 = 1
@@ -169,18 +147,18 @@ def pack_addr(address):
             pass
     if len(address) > 255:
         address = address[:255]  # TODO
-    return b'\x03' + chr(len(address)) + address
+    return b'\x03' + byte_of(len(address)) + address
 
 def pre_parse_header(data):
     if not data:
         return None
-    datatype = ord(data[0])
+    datatype = byte_value(data[0])
     if datatype == 0x80:
         if len(data) <= 2:
             return None
-        rand_data_size = ord(data[1])
+        rand_data_size = byte_value(data[1])
         if rand_data_size + 2 >= len(data):
-            logging.warn('header too short, maybe wrong password or '
+            logging.warning('header too short, maybe wrong password or '
                          'encryption method')
             return None
         data = data[rand_data_size + 2:]
@@ -191,7 +169,7 @@ def pre_parse_header(data):
             return None
         rand_data_size = struct.unpack('>H', data[1:3])[0]
         if rand_data_size + 3 >= len(data):
-            logging.warn('header too short, maybe wrong password or '
+            logging.warning('header too short, maybe wrong password or '
                          'encryption method')
             return None
         data = data[rand_data_size + 3:]
@@ -203,17 +181,17 @@ def pre_parse_header(data):
         data = data[:data_size]
         crc = binascii.crc32(data) & 0xffffffff
         if crc != 0xffffffff:
-            logging.warn('uncorrect CRC32, maybe wrong password or '
+            logging.warning('uncorrect CRC32, maybe wrong password or '
                          'encryption method')
             return None
-        start_pos = 3 + ord(data[3])
+        start_pos = 3 + byte_value(data[3])
         data = data[start_pos:-4]
         if data_size < len(ogn_data):
             data += ogn_data[data_size:]
     return data
 
 def parse_header(data):
-    addrtype = ord(data[0])
+    addrtype = byte_value(data[0])
     dest_addr = None
     dest_port = None
     header_length = 0
@@ -225,28 +203,28 @@ def parse_header(data):
             dest_port = struct.unpack('>H', data[5:7])[0]
             header_length = 7
         else:
-            logging.warn('header is too short')
+            logging.warning('header is too short')
     elif addrtype == ADDRTYPE_HOST:
         if len(data) > 2:
-            addrlen = ord(data[1])
+            addrlen = byte_value(data[1])
             if len(data) >= 4 + addrlen:
                 dest_addr = data[2:2 + addrlen]
                 dest_port = struct.unpack('>H', data[2 + addrlen:4 +
                                                      addrlen])[0]
                 header_length = 4 + addrlen
             else:
-                logging.warn('header is too short')
+                logging.warning('header is too short')
         else:
-            logging.warn('header is too short')
+            logging.warning('header is too short')
     elif addrtype == ADDRTYPE_IPV6:
         if len(data) >= 19:
             dest_addr = socket.inet_ntop(socket.AF_INET6, data[1:17])
             dest_port = struct.unpack('>H', data[17:19])[0]
             header_length = 19
         else:
-            logging.warn('header is too short')
+            logging.warning('header is too short')
     else:
-        logging.warn('unsupported addrtype %d, maybe wrong password or '
+        logging.warning('unsupported addrtype %d, maybe wrong password or '
                      'encryption method' % addrtype)
     if dest_addr is None:
         return None
@@ -257,6 +235,7 @@ class IPNetwork(object):
     ADDRLENGTH = {socket.AF_INET: 32, socket.AF_INET6: 128, False: 0}
 
     def __init__(self, addrs):
+        addrs = to_str(addrs)
         self.addrs_str = addrs
         self._network_list_v4 = []
         self._network_list_v6 = []
@@ -265,7 +244,7 @@ class IPNetwork(object):
         list(map(self.add_network, addrs))
 
     def add_network(self, addr):
-        if addr is "":
+        if addr == "":
             return
         block = addr.split('/')
         addr_family = is_ip(block[0])
@@ -277,12 +256,12 @@ class IPNetwork(object):
             ip = (hi << 64) | lo
         else:
             raise Exception("Not a valid CIDR notation: %s" % addr)
-        if len(block) is 1:
+        if len(block) == 1:
             prefix_size = 0
-            while (ip & 1) == 0 and ip is not 0:
+            while (ip & 1) == 0 and ip != 0:
                 ip >>= 1
                 prefix_size += 1
-            logging.warn("You did't specify CIDR routing prefix size for %s, "
+            logging.warning("You did't specify CIDR routing prefix size for %s, "
                          "implicit treated as %s/%d" % (addr, addr, addr_len))
         elif block[1].isdigit() and int(block[1]) <= addr_len:
             prefix_size = addr_len - int(block[1])
@@ -307,9 +286,6 @@ class IPNetwork(object):
                            self._network_list_v6))
         else:
             return False
-
-    def __cmp__(self, other):
-        return cmp(self.addrs_str, other.addrs_str)
 
     def __eq__(self, other):
         return self.addrs_str == other.addrs_str
@@ -344,9 +320,6 @@ class PortRange(object):
 
     def __contains__(self, val):
         return val in self.range
-
-    def __cmp__(self, other):
-        return cmp(self.range_str, other.range_str)
 
     def __eq__(self, other):
         return self.range_str == other.range_str
@@ -424,10 +397,10 @@ def test_ip_network():
 
 
 def test_sync_str_bytes():
-    assert sync_str_bytes(b'a\.b', b'a\.b') == b'a\.b'
-    assert sync_str_bytes('a\.b', b'a\.b') == b'a\.b'
-    assert sync_str_bytes(b'a\.b', 'a\.b') == 'a\.b'
-    assert sync_str_bytes('a\.b', 'a\.b') == 'a\.b'
+    assert sync_str_bytes(rb'a\.b', rb'a\.b') == rb'a\.b'
+    assert sync_str_bytes(r'a\.b', rb'a\.b') == rb'a\.b'
+    assert sync_str_bytes(rb'a\.b', r'a\.b') == r'a\.b'
+    assert sync_str_bytes(r'a\.b', r'a\.b') == r'a\.b'
     pass
 
 

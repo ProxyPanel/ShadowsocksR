@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2015 clowwindy
 #
@@ -13,9 +13,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
-from __future__ import absolute_import, division, print_function, \
-    with_statement
 
 from ctypes import c_char_p, c_int, c_ulong, c_ulonglong, byref, \
     create_string_buffer, c_void_p
@@ -60,7 +57,7 @@ def load_libsodium():
                                                                  c_ulonglong,
                                                                  c_char_p, c_ulong,
                                                                  c_char_p)
-    except:
+    except Exception:
         logging.info("ChaCha20 IETF not support.")
         pass
 
@@ -70,7 +67,7 @@ def load_libsodium():
                                                             c_ulonglong,
                                                             c_char_p, c_ulonglong,
                                                             c_char_p)
-    except:
+    except Exception:
         logging.info("XSalsa20 not support.")
         pass
 
@@ -80,7 +77,7 @@ def load_libsodium():
                                                              c_ulonglong,
                                                              c_char_p, c_ulonglong,
                                                              c_char_p)
-    except:
+    except Exception:
         logging.info("XChaCha20 not support. XChaCha20 only support since libsodium v1.0.12")
         pass
 
@@ -125,7 +122,7 @@ class SodiumCrypto(object):
         if padding:
             data = (b'\0' * padding) + data
         self.cipher(byref(buf), c_char_p(data), padding + l,
-                    self.iv_ptr, int(self.counter / BLOCK_SIZE), self.key_ptr)
+                    self.iv_ptr, self.counter // BLOCK_SIZE, self.key_ptr)
         self.counter += l
         # buf is copied to a str object when we access buf.raw
         # strip off the padding

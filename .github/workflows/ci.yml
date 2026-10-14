@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  static:
+    name: static (python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: pip install -r requirements.txt ruff
+      - name: Lint with ruff
+        run: ruff check .
+      - name: Byte-compile
+        run: python -m compileall -q shadowsocks *.py
+      - name: Import smoke test
+        run: |
+          bash initcfg.sh
+          python -c "import shadowsocks.tcprelay, shadowsocks.udprelay, shadowsocks.obfs, shadowsocks.server, shadowsocks.local, shadowsocks.manager, shadowsocks.asyncdns, shadowsocks.encrypt, db_transfer, server_pool, configloader, switchrule, database; print('import smoke ok')"
+
+  functional:
+    name: functional (python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends curl nginx libsodium-dev
+          sudo dd if=/dev/urandom of=/var/www/html/file bs=1M count=10
+          sudo service nginx restart
+      - name: Install dependencies
+        run: pip install -r requirements.txt ruff
+      - name: Prepare node config
+        run: bash initcfg.sh
+      - name: Run tests
+        run: bash tests/run_tests.sh

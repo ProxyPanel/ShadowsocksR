@@ -1,9 +1,0 @@
-asn1crypto==1.5.1
-certifi==2023.7.22
-cffi==1.14.6
-cryptography==3.4.8
-idna==2.10
-peewee==3.14.8
-pycparser==2.20
-PyMySQL==0.9.3
-six==1.16.0

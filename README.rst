@@ -1,7 +1,7 @@
 shadowsocks
 ===========
 
-|PyPI version| |Build Status| |Coverage Status|
+|Build Status|
 
 A fast tunnel proxy that helps you bypass firewalls.
 
@@ -15,15 +15,22 @@ Debian / Ubuntu:
 
 ::
 
-    apt-get install python-pip
-    pip install shadowsocks
+    apt-get install python3-pip
 
 CentOS:
 
 ::
 
-    yum install python-setuptools && easy_install pip
-    pip install shadowsocks
+    yum install python3-pip
+
+Then install from this repository:
+
+::
+
+    git clone https://github.com/ProxyPanel/ShadowsocksR.git
+    cd ShadowsocksR
+    pip3 install -r requirements.txt
+    pip3 install .
 
 Windows:
 
@@ -105,9 +112,5 @@ Bugs and Issues
    Tracker <https://github.com/shadowsocks/shadowsocks/issues?state=open>`__
 -  `Mailing list <https://groups.google.com/group/shadowsocks>`__
 
-.. |PyPI version| image:: https://img.shields.io/pypi/v/shadowsocks.svg?style=flat
-   :target: https://pypi.python.org/pypi/shadowsocks
-.. |Build Status| image:: https://img.shields.io/travis/shadowsocks/shadowsocks/master.svg?style=flat
-   :target: https://travis-ci.org/shadowsocks/shadowsocks
-.. |Coverage Status| image:: https://jenkins.shadowvpn.org/result/shadowsocks
-   :target: https://jenkins.shadowvpn.org/job/Shadowsocks/ws/PYENV/py34/label/linux/htmlcov/index.html
+.. |Build Status| image:: https://github.com/ProxyPanel/ShadowsocksR/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/ProxyPanel/ShadowsocksR/actions/workflows/ci.yml

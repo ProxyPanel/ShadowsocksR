@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2015 clowwindy
 #
@@ -59,10 +58,6 @@
 # `client`  means UDP clients that connects to other servers
 # `server`  means the UDP server that handles user requests
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
-import time
 import socket
 import logging
 import struct
@@ -70,7 +65,6 @@ import errno
 import random
 import binascii
 import traceback
-import threading
 
 from shadowsocks import encrypt, obfs, eventloop, lru_cache, common, shell
 from shadowsocks.common import pre_parse_header, parse_header, pack_addr
@@ -162,7 +156,7 @@ class UDPRelay(object):
         self.server_user_transfer_ul = {}
         self.server_user_transfer_dl = {}
 
-        if common.to_bytes(config['protocol']) in obfs.mu_protocol():
+        if common.to_str(config['protocol']) in obfs.mu_protocol():
             self._update_users(None, None)
 
         self.protocol_data = obfs.obfs(config['protocol']).init_data()
@@ -222,9 +216,9 @@ class UDPRelay(object):
     def _get_a_server(self):
         server = self._config['server']
         server_port = self._config['server_port']
-        if type(server_port) == list:
+        if isinstance(server_port, list):
             server_port = random.choice(server_port)
-        if type(server) == list:
+        if isinstance(server, list):
             server = random.choice(server)
         logging.debug('chosen server: %s:%d', server, server_port)
         return server, server_port
@@ -316,7 +310,7 @@ class UDPRelay(object):
 
     def _handel_protocol_error(self, client_address, ogn_data):
         #raise Exception('can not parse header')
-        logging.warn("Protocol ERROR, UDP ogn data %s from %s:%d" % (binascii.hexlify(ogn_data), client_address[0], client_address[1]))
+        logging.warning("Protocol ERROR, UDP ogn data %s from %s:%d" % (binascii.hexlify(ogn_data), client_address[0], client_address[1]))
 
     def _socket_bind_addr(self, sock, af):
         bind_addr = ''
@@ -334,8 +328,8 @@ class UDPRelay(object):
                 logging.debug("bind %s" % (bind_addr,))
                 try:
                     sock.bind((bind_addr, 0))
-                except Exception as e:
-                    logging.warn("bind %s fail" % (bind_addr,))
+                except Exception:
+                    logging.warning("bind %s fail" % (bind_addr,))
 
     def _handle_server(self):
         server = self._server_socket
@@ -348,9 +342,9 @@ class UDPRelay(object):
             self._stat_callback(self._listen_port, len(data))
         uid = None
         if self._is_local:
-            frag = common.ord(data[2])
+            frag = common.byte_value(data[2])
             if frag != 0:
-                logging.warn('drop a message since frag is not 0')
+                logging.warning('drop a message since frag is not 0')
                 return
             else:
                 data = data[3:]
@@ -372,7 +366,7 @@ class UDPRelay(object):
 
         try:
             header_result = parse_header(data)
-        except:
+        except Exception:
             self._handel_protocol_error(r_addr, ogn_data)
             return
 
@@ -389,7 +383,7 @@ class UDPRelay(object):
 
         if (addrtype & 7) == 3:
             af = common.is_ip(server_addr)
-            if af == False:
+            if not af:
                 handler = common.UDPAsyncDNSHandler((data, r_addr, uid, header_length))
                 handler.resolve(self._dns_resolver, (server_addr, server_port), self._handle_server_dns_resolved)
             else:
@@ -548,20 +542,16 @@ class UDPRelay(object):
             pass
 
     def write_to_server_socket(self, data, addr):
-        uncomplete = False
-        retry = 0
         try:
             self._server_socket.sendto(data, addr)
             data = None
             while self._data_to_write_to_server_socket:
                 data_buf = self._data_to_write_to_server_socket[0]
-                retry = data_buf[1] + 1
                 del self._data_to_write_to_server_socket[0]
                 data, addr = data_buf[0]
                 self._server_socket.sendto(data, addr)
         except (OSError, IOError) as e:
             error_no = eventloop.errno_from_exception(e)
-            uncomplete = True
             if error_no in (errno.EWOULDBLOCK,):
                 pass
             else:
@@ -631,7 +621,7 @@ class UDPRelay(object):
                 if handler:
                     handler.handle_event(sock, event)
             else:
-                logging.warn('poll removed fd')
+                logging.warning('poll removed fd')
 
     def handle_periodic(self):
         if self._closed:

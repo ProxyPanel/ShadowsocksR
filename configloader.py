@@ -1,7 +1,6 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 import importloader
-from utils.json_util import *
+from utils.json_util import JsonUtil
 import os
 
 g_config = None

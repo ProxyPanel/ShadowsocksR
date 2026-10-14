@@ -1,8 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 # @Time    : 2018/10/27 13:59
 # @Author  : Sakura
-# @Site    : 
+# @Site    :
 # @File    : net_util.py
 # @Software: PyCharm
 

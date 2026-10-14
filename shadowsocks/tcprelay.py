@@ -1,5 +1,4 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 #
 # Copyright 2015 clowwindy
 #
@@ -15,9 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from __future__ import absolute_import, division, print_function, \
-    with_statement
-
 import time
 import socket
 import errno
@@ -26,10 +22,8 @@ import logging
 import binascii
 import traceback
 import random
-import platform
-import threading
 
-from shadowsocks import encrypt, obfs, eventloop, shell, common, lru_cache, version
+from shadowsocks import encrypt, obfs, eventloop, shell, common, lru_cache
 from shadowsocks.common import pre_parse_header, parse_header
 
 # we clear at most TIMEOUTS_CLEAN_SIZE timeouts each time
@@ -246,9 +240,9 @@ class TCPRelayHandler(object):
     def _get_a_server(self):
         server = self._config['server']
         server_port = self._config['server_port']
-        if type(server_port) == list:
+        if isinstance(server_port, list):
             server_port = random.choice(server_port)
-        if type(server) == list:
+        if isinstance(server, list):
             server = random.choice(server)
         logging.debug('chosen server: %s:%d', server, server_port)
         return server, server_port
@@ -260,7 +254,7 @@ class TCPRelayHandler(object):
             if tcp_mss > 500 and tcp_mss <= 1500:
                 self._tcp_mss = tcp_mss
             logging.debug("TCP MSS = %d" % (self._tcp_mss,))
-        except:
+        except Exception:
             pass
 
     def _create_encryptor(self, config):
@@ -338,9 +332,9 @@ class TCPRelayHandler(object):
                     data = self._udp_data_send_buffer[:length]
                     self._udp_data_send_buffer = self._udp_data_send_buffer[length:]
 
-                    frag = common.ord(data[2])
+                    frag = common.byte_value(data[2])
                     if frag != 0:
-                        logging.warn('drop a message since frag is %d' % (frag,))
+                        logging.warning('drop a message since frag is %d' % (frag,))
                         continue
                     else:
                         data = data[3:]
@@ -350,7 +344,7 @@ class TCPRelayHandler(object):
                     connecttype, addrtype, dest_addr, dest_port, header_length = header_result
                     if (addrtype & 7) == 3:
                         af = common.is_ip(dest_addr)
-                        if af == False:
+                        if not af:
                             handler = common.UDPAsyncDNSHandler(data[header_length:])
                             handler.resolve(self._dns_resolver, (dest_addr, dest_port), self._handle_server_dns_resolved)
                         else:
@@ -449,7 +443,7 @@ class TCPRelayHandler(object):
     def _get_redirect_host(self, client_address, ogn_data):
         host_list = self._redir_list or ["*#0.0.0.0:0"]
 
-        if type(host_list) != list:
+        if not isinstance(host_list, list):
             host_list = [host_list]
 
         items_sum = common.to_str(host_list[0]).rsplit('#', 1)
@@ -475,7 +469,7 @@ class TCPRelayHandler(object):
                         if port == self._server._listen_port:
                             match_port = True
                         host_port.append((items[0], port))
-                    except:
+                    except Exception:
                         pass
                 else:
                     host_port.append((host, 80))
@@ -500,17 +494,17 @@ class TCPRelayHandler(object):
                         try:
                             if self._server._listen_port != int(items_match[1]) and int(items_match[1]) != 0:
                                 continue
-                        except:
+                        except Exception:
                             pass
 
-                if items_match[0] != "*" and common.match_regex(
-                        items_match[0], ogn_data) == False:
+                if items_match[0] != "*" and not common.match_regex(
+                        items_match[0], ogn_data):
                     continue
                 if len(items) > 1:
                     try:
                         port = int(items[1])
                         return (items[0], port)
-                    except:
+                    except Exception:
                         pass
                 else:
                     return (items[0], 80)
@@ -518,15 +512,15 @@ class TCPRelayHandler(object):
             return ("0.0.0.0", 0)
 
     def _handel_protocol_error(self, client_address, ogn_data):
-        logging.warn("Protocol ERROR, TCP ogn data %s from %s:%d via port %d by UID %d" % (binascii.hexlify(ogn_data), client_address[0], client_address[1], self._server._listen_port, self._user_id))
+        logging.warning("Protocol ERROR, TCP ogn data %s from %s:%d via port %d by UID %d" % (binascii.hexlify(ogn_data), client_address[0], client_address[1], self._server._listen_port, self._user_id))
         self._encrypt_correct = False
         #create redirect or disconnect by hash code
         host, port = self._get_redirect_host(client_address, ogn_data)
         if port == 0:
             raise Exception('can not parse header')
-        data = b"\x03" + common.to_bytes(common.chr(len(host))) + common.to_bytes(host) + struct.pack('>H', port)
+        data = b"\x03" + common.to_bytes(common.byte_of(len(host))) + common.to_bytes(host) + struct.pack('>H', port)
         self._is_redirect = True
-        logging.warn("TCP data redir %s:%d %s" % (host, port, binascii.hexlify(data)))
+        logging.warning("TCP data redir %s:%d %s" % (host, port, binascii.hexlify(data)))
         return data + ogn_data
 
     def _handle_stage_connecting(self, data):
@@ -575,19 +569,19 @@ class TCPRelayHandler(object):
     def _get_head_size(self, buf, def_value):
         if len(buf) < 2:
             return def_value
-        head_type = common.ord(buf[0]) & 0xF
+        head_type = common.byte_value(buf[0]) & 0xF
         if head_type == 1:
             return 7
         if head_type == 4:
             return 19
         if head_type == 3:
-            return 4 + common.ord(buf[1])
+            return 4 + common.byte_value(buf[1])
         return def_value
 
     def _handle_stage_addr(self, ogn_data, data):
         try:
             if self._is_local:
-                cmd = common.ord(data[1])
+                cmd = common.byte_value(data[1])
                 if cmd == CMD_UDP_ASSOCIATE:
                     logging.debug('UDP associate')
                     if self._local_sock.family == socket.AF_INET6:
@@ -611,7 +605,6 @@ class TCPRelayHandler(object):
                     self.destroy()
                     return
 
-            before_parse_data = data
             if self._is_local:
                 header_result = parse_header(data)
             else:
@@ -622,7 +615,7 @@ class TCPRelayHandler(object):
                 if header_result is not None:
                     try:
                         common.to_str(header_result[2])
-                    except Exception as e:
+                    except Exception:
                         header_result = None
                 if header_result is None:
                     data = self._handel_protocol_error(self._client_address, ogn_data)
@@ -693,8 +686,8 @@ class TCPRelayHandler(object):
                 logging.debug("bind %s" % (bind_addr,))
                 try:
                     sock.bind((bind_addr, 0))
-                except Exception as e:
-                    logging.warn("bind %s fail" % (bind_addr,))
+                except Exception:
+                    logging.warning("bind %s fail" % (bind_addr,))
 
     def _create_remote_socket(self, ip, port):
         if self._remote_udp:
@@ -826,7 +819,7 @@ class TCPRelayHandler(object):
         if buffer_size == recv_buffer_size:
             return buffer_size
         if buffer_size > frame_size:
-            buffer_size = int(buffer_size / frame_size) * frame_size
+            buffer_size = buffer_size // frame_size * frame_size
         return buffer_size
 
     def _on_local_read(self):
@@ -939,7 +932,7 @@ class TCPRelayHandler(object):
                 try:
                     ip = socket.inet_aton(addr[0])
                     data = b'\x00\x01' + ip + port + data
-                except Exception as e:
+                except Exception:
                     ip = socket.inet_pton(socket.AF_INET6, addr[0])
                     data = b'\x00\x04' + ip + port + data
                 size = len(data) + 2
@@ -1079,7 +1072,7 @@ class TCPRelayHandler(object):
                 handle = True
                 self._on_local_write()
         else:
-            logging.warn('unknown socket from %s:%d' % (self._client_address[0], self._client_address[1]))
+            logging.warning('unknown socket from %s:%d' % (self._client_address[0], self._client_address[1]))
             try:
                 self._loop.removefd(fd)
             except Exception as e:
@@ -1229,7 +1222,7 @@ class TCPRelay(object):
         if config['fast_open']:
             try:
                 server_socket.setsockopt(socket.SOL_TCP, 23, 5)
-            except socket.error:
+            except OSError:
                 logging.error('warning: fast open is not available')
                 self._config['fast_open'] = False
         server_socket.listen(config.get('max_connect', 1024))
@@ -1449,7 +1442,7 @@ class TCPRelay(object):
                 if handler:
                     handle = handler.handle_event(sock, fd, event)
                 else:
-                    logging.warn('unknown fd')
+                    logging.warning('unknown fd')
                     handle = True
                     try:
                         self._eventloop.removefd(fd)
@@ -1457,7 +1450,7 @@ class TCPRelay(object):
                         shell.print_exception(e)
                     sock.close()
             else:
-                logging.warn('poll removed fd')
+                logging.warning('poll removed fd')
                 handle = True
                 if fd in self._fd_to_handlers:
                     try:
