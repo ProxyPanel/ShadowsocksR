@@ -19,21 +19,21 @@ db_instance = None
 def _connect_db():
     # 字符集与 TLS 判据的唯一来源是 database.connect_args，裸 cursor 与 peewee 两条路径共用
     kwargs = dict(connect_args)
-    kwargs['database'] = get_mysql_config()["db"]
+    kwargs["database"] = get_mysql_config()["db"]
     return pymysql.connect(**kwargs)
 
 
 class TransferBase(object):
     def __init__(self):
         import threading
+
         self.event = threading.Event()
-        self.key_list = ['port', 'u', 'd', 'transfer_enable',
-                         'passwd', 'enable', 'protocol_param']
+        self.key_list = ["port", "u", "d", "transfer_enable", "passwd", "enable", "protocol_param"]
         self.last_get_transfer = {}  # 上一次的实际流量
         self.last_update_transfer = {}  # 上一次更新到的流量（小于等于实际流量）
         self.force_update_transfer = set()  # 强制推入数据库的ID
         self.port_uid_table = {}  # 端口到uid的映射（仅v3以上有用）
-        self.onlineuser_cache = lru_cache.LRUCache(timeout=60*30)  # 用户在线状态记录
+        self.onlineuser_cache = lru_cache.LRUCache(timeout=60 * 30)  # 用户在线状态记录
         self.pull_ok = False  # 记录是否已经拉出过数据
         self.mu_ports = {}
 
@@ -50,8 +50,7 @@ class TransferBase(object):
         dt_transfer = {}
         for id in self.force_update_transfer:  # 此表中的用户统计上次未计入的流量
             if id in self.last_get_transfer and id in last_transfer:
-                dt_transfer[id] = [self.last_get_transfer[id][0] - last_transfer[id]
-                                   [0], self.last_get_transfer[id][1] - last_transfer[id][1]]
+                dt_transfer[id] = [self.last_get_transfer[id][0] - last_transfer[id][0], self.last_get_transfer[id][1] - last_transfer[id][1]]
 
         for id in curr_transfer.keys():
             if id in self.force_update_transfer or id in self.mu_ports:
@@ -60,8 +59,7 @@ class TransferBase(object):
             if id in last_transfer:
                 if curr_transfer[id][0] + curr_transfer[id][1] - last_transfer[id][0] - last_transfer[id][1] <= 0:
                     continue
-                dt_transfer[id] = [curr_transfer[id][0] - last_transfer[id][0],
-                                   curr_transfer[id][1] - last_transfer[id][1]]
+                dt_transfer[id] = [curr_transfer[id][0] - last_transfer[id][0], curr_transfer[id][1] - last_transfer[id][1]]
             else:
                 if curr_transfer[id][0] + curr_transfer[id][1] <= 0:
                     continue
@@ -70,11 +68,9 @@ class TransferBase(object):
             # 有流量的，先记录在线状态
             if id in self.last_get_transfer:
                 if curr_transfer[id][0] + curr_transfer[id][1] > self.last_get_transfer[id][0] + self.last_get_transfer[id][1]:
-                    self.onlineuser_cache[id] = curr_transfer[id][0] + \
-                        curr_transfer[id][1]
+                    self.onlineuser_cache[id] = curr_transfer[id][0] + curr_transfer[id][1]
             else:
-                self.onlineuser_cache[id] = curr_transfer[id][0] + \
-                    curr_transfer[id][1]
+                self.onlineuser_cache[id] = curr_transfer[id][0] + curr_transfer[id][1]
 
         self.onlineuser_cache.sweep()
 
@@ -82,8 +78,7 @@ class TransferBase(object):
         for id in update_transfer.keys():  # 其增量加在此表
             if id not in self.force_update_transfer:  # 但排除在force_update_transfer内的
                 last = self.last_update_transfer.get(id, [0, 0])
-                self.last_update_transfer[id] = [
-                    last[0] + update_transfer[id][0], last[1] + update_transfer[id][1]]
+                self.last_update_transfer[id] = [last[0] + update_transfer[id][0], last[1] + update_transfer[id][1]]
         self.last_get_transfer = curr_transfer
         for id in self.force_update_transfer:
             if id in self.last_update_transfer:
@@ -97,10 +92,10 @@ class TransferBase(object):
         # 启动没超流量的服务
         keymap = {}
         try:
-            switchrule = importloader.load('switchrule')
+            switchrule = importloader.load("switchrule")
             keymap = switchrule.getRowMap()
         except Exception:
-            logging.error('load switchrule.py fail')
+            logging.error("load switchrule.py fail")
         cur_servers = {}
         new_servers = {}
         allow_users = {}
@@ -108,22 +103,29 @@ class TransferBase(object):
         config = shell.get_config(False)
         for row in rows:
             try:
-                allow = switchrule.isTurnOn(
-                    row) and row['enable'] == 1 and row['u'] + row['d'] < row['transfer_enable']
+                allow = switchrule.isTurnOn(row) and row["enable"] == 1 and row["u"] + row["d"] < row["transfer_enable"]
             except Exception:
                 allow = False
 
-            port = row['port']
-            passwd = common.to_str(row['passwd'])
-            cfg = {'password': passwd}
-            if 'id' in row:
-                self.port_uid_table[row['port']] = row['id']
+            port = row["port"]
+            passwd = common.to_str(row["passwd"])
+            cfg = {"password": passwd}
+            if "id" in row:
+                self.port_uid_table[row["port"]] = row["id"]
 
-            read_config_keys = ['method', 'obfs', 'obfs_param', 'protocol', 'protocol_param',
-                                'forbidden_ip', 'forbidden_port', 'speed_limit_per_con', 'speed_limit_per_user']
+            read_config_keys = [
+                "method",
+                "obfs",
+                "obfs_param",
+                "protocol",
+                "protocol_param",
+                "forbidden_ip",
+                "forbidden_port",
+                "speed_limit_per_con",
+                "speed_limit_per_user",
+            ]
             # 文本列归一成 str，限速两列保持数值类型（SpeedTester 按数值比较）
-            text_config_keys = ('method', 'obfs', 'obfs_param', 'protocol', 'protocol_param',
-                                'forbidden_ip', 'forbidden_port')
+            text_config_keys = ("method", "obfs", "obfs_param", "protocol", "protocol_param", "forbidden_ip", "forbidden_port")
             for name in read_config_keys:
                 if name in row and row[name]:
                     target = keymap.get(name, name)
@@ -132,17 +134,16 @@ class TransferBase(object):
                         value = common.to_str(value)
                     cfg[target] = value
 
-            merge_config_keys = ['password'] + read_config_keys
+            merge_config_keys = ["password"] + read_config_keys
 
             if port not in cur_servers:
                 cur_servers[port] = passwd
             else:
-                logging.error(
-                    'more than one user use the same port [%s]' % (port,))
+                logging.error("more than one user use the same port [%s]" % (port,))
                 continue
 
-            if 'protocol' in cfg and 'protocol_param' in cfg and common.to_str(cfg['protocol']) in obfs.mu_protocol():
-                if '#' in common.to_str(cfg['protocol_param']):
+            if "protocol" in cfg and "protocol_param" in cfg and common.to_str(cfg["protocol"]) in obfs.mu_protocol():
+                if "#" in common.to_str(cfg["protocol_param"]):
                     mu_servers[port] = passwd
                     allow = True
 
@@ -158,8 +159,7 @@ class TransferBase(object):
                             cfgchange = True
                             break
                 if not cfgchange and port in ServerPool.get_instance().tcp_ipv6_servers_pool:
-                    relay = ServerPool.get_instance(
-                    ).tcp_ipv6_servers_pool[port]
+                    relay = ServerPool.get_instance().tcp_ipv6_servers_pool[port]
                     for name in merge_config_keys:
                         if (name in cfg) and ((name not in relay._config) or not self.cmp(cfg[name], relay._config[name])):
                             cfgchange = True
@@ -168,8 +168,7 @@ class TransferBase(object):
             if port in mu_servers:
                 if ServerPool.get_instance().server_is_run(port) > 0:
                     if cfgchange:
-                        logging.info(
-                            'db stop server at port [%s] reason: config changed: %s' % (port, cfg))
+                        logging.info("db stop server at port [%s] reason: config changed: %s" % (port, cfg))
                         ServerPool.get_instance().cb_del_server(port)
                         self.force_update_transfer.add(port)
                         new_servers[port] = (passwd, cfg)
@@ -177,42 +176,39 @@ class TransferBase(object):
                     self.new_server(port, passwd, cfg)
             else:
                 if ServerPool.get_instance().server_is_run(port) > 0:
-                    if config['additional_ports_only'] or not allow:
-                        logging.info('db stop server at port [%s]' % (port,))
+                    if config["additional_ports_only"] or not allow:
+                        logging.info("db stop server at port [%s]" % (port,))
                         ServerPool.get_instance().cb_del_server(port)
                         self.force_update_transfer.add(port)
                     else:
                         if cfgchange:
-                            logging.info(
-                                'db stop server at port [%s] reason: config changed: %s' % (port, cfg))
+                            logging.info("db stop server at port [%s] reason: config changed: %s" % (port, cfg))
                             ServerPool.get_instance().cb_del_server(port)
                             self.force_update_transfer.add(port)
                             new_servers[port] = (passwd, cfg)
 
-                elif not config['additional_ports_only'] and allow and port > 0 and port < 65536 and ServerPool.get_instance().server_run_status(port) is False:
+                elif not config["additional_ports_only"] and allow and port > 0 and port < 65536 and ServerPool.get_instance().server_run_status(port) is False:
                     self.new_server(port, passwd, cfg)
 
         for row in last_rows:
-            if row['port'] in cur_servers:
+            if row["port"] in cur_servers:
                 pass
             else:
-                logging.info(
-                    'db stop server at port [%s] reason: port not exist' % (row['port']))
-                ServerPool.get_instance().cb_del_server(row['port'])
-                self.clear_cache(row['port'])
-                if row['port'] in self.port_uid_table:
-                    del self.port_uid_table[row['port']]
+                logging.info("db stop server at port [%s] reason: port not exist" % (row["port"]))
+                ServerPool.get_instance().cb_del_server(row["port"])
+                self.clear_cache(row["port"])
+                if row["port"] in self.port_uid_table:
+                    del self.port_uid_table[row["port"]]
 
         if len(new_servers) > 0:
             from shadowsocks import eventloop
-            self.event.wait(eventloop.TIMEOUT_PRECISION +
-                            eventloop.TIMEOUT_PRECISION / 2)
+
+            self.event.wait(eventloop.TIMEOUT_PRECISION + eventloop.TIMEOUT_PRECISION / 2)
             for port in new_servers.keys():
                 passwd, cfg = new_servers[port]
                 self.new_server(port, passwd, cfg)
 
-        logging.debug('db allow users %s \nmu_servers %s' %
-                      (allow_users, mu_servers))
+        logging.debug("db allow users %s \nmu_servers %s" % (allow_users, mu_servers))
         for port in mu_servers:
             ServerPool.get_instance().update_mu_users(port, allow_users)
 
@@ -227,14 +223,10 @@ class TransferBase(object):
             del self.last_update_transfer[port]
 
     def new_server(self, port, passwd, cfg):
-        protocol = cfg.get(
-            'protocol', ServerPool.get_instance().config.get('protocol', 'origin'))
-        method = cfg.get(
-            'method', ServerPool.get_instance().config.get('method', 'None'))
-        obfs = cfg.get(
-            'obfs', ServerPool.get_instance().config.get('obfs', 'plain'))
-        logging.info('db start server at port [%s] pass [%s] protocol [%s] method [%s] obfs [%s]' % (
-            port, passwd, protocol, method, obfs))
+        protocol = cfg.get("protocol", ServerPool.get_instance().config.get("protocol", "origin"))
+        method = cfg.get("method", ServerPool.get_instance().config.get("method", "None"))
+        obfs = cfg.get("obfs", ServerPool.get_instance().config.get("obfs", "plain"))
+        logging.info("db start server at port [%s] pass [%s] protocol [%s] method [%s] obfs [%s]" % (port, passwd, protocol, method, obfs))
         ServerPool.get_instance().new_server(port, cfg)
 
     def cmp(self, val1, val2):
@@ -256,6 +248,7 @@ class TransferBase(object):
     @staticmethod
     def thread_db(obj):
         import socket
+
         global db_instance
         timeout = 60
         socket.setdefaulttimeout(timeout)
@@ -266,9 +259,9 @@ class TransferBase(object):
 
         try:
             import resource
+
             resource.setrlimit(resource.RLIMIT_NOFILE, (1000000, 1000000))
-            logging.info(
-                'current process RLIMIT_NOFILE resource: soft %d hard %d' % resource.getrlimit(resource.RLIMIT_NOFILE))
+            logging.info("current process RLIMIT_NOFILE resource: soft %d hard %d" % resource.getrlimit(resource.RLIMIT_NOFILE))
         except Exception:
             pass
 
@@ -282,13 +275,13 @@ class TransferBase(object):
                     if rows:
                         db_instance.pull_ok = True
                         config = shell.get_config(False)
-                        for port in config['additional_ports']:
-                            val = config['additional_ports'][port]
-                            val['port'] = int(port)
-                            val['enable'] = 1
-                            val['transfer_enable'] = 1024 ** 7
-                            val['u'] = 0
-                            val['d'] = 0
+                        for port in config["additional_ports"]:
+                            val = config["additional_ports"][port]
+                            val["port"] = int(port)
+                            val["enable"] = 1
+                            val["transfer_enable"] = 1024**7
+                            val["u"] = 0
+                            val["d"] = 0
                             if "password" in val:
                                 val["passwd"] = val["password"]
                             rows.append(val)
@@ -330,14 +323,14 @@ class DbTransfer(TransferBase):
             conn.close()
 
         if not rows:
-            logging.warning('no user in db')
+            logging.warning("no user in db")
         return rows
 
     def push_all_port_and_connect(self):
         config = shell.get_config(False)
         tcp_poll = None
         udp_poll = None
-        if 'server_ipv6' in config:
+        if "server_ipv6" in config:
             tcp_poll = ServerPool.get_instance().tcp_ipv6_servers_pool
             udp_poll = ServerPool.get_instance().udp_ipv6_servers_pool
         else:
@@ -345,49 +338,52 @@ class DbTransfer(TransferBase):
             udp_poll = ServerPool.get_instance().udp_servers_pool
         # 结果集
         result = []
-        for (k, v) in tcp_poll.items():
-            if len(v['one_minute_ips']) > 0:
-                result.append({
-                    'node': self.cfg['node_id'],
-                    'port': k,
-                    'type': 'tcp',
-                    'ip': ','.join([from_map_ipv6_get_ipv4(x) for x in v['one_minute_ips']]),
-                    'created_at': time.time()
-                })
+        for k, v in tcp_poll.items():
+            if len(v["one_minute_ips"]) > 0:
+                result.append(
+                    {
+                        "node": self.cfg["node_id"],
+                        "port": k,
+                        "type": "tcp",
+                        "ip": ",".join([from_map_ipv6_get_ipv4(x) for x in v["one_minute_ips"]]),
+                        "created_at": time.time(),
+                    }
+                )
 
-        for (k, v) in udp_poll.items():
-            if len(v['one_minute_ips']) > 0:
-                result.append({
-                    'node': self.cfg['node_id'],
-                    'port': k,
-                    'type': 'udp',
-                    'ip': ','.join([from_map_ipv6_get_ipv4(x) for x in v['one_minute_ips']]),
-                    'created_at': time.time()
-                })
-                # 如果结果集不为空则更新数据库
-                if len(result) > 0:
-                    with database.atomic():
-                        SsNodeIp.insert_many(result).execute()
-                    logging.info(
-                        "push all user one minute connections finished")
+        for k, v in udp_poll.items():
+            if len(v["one_minute_ips"]) > 0:
+                result.append(
+                    {
+                        "node": self.cfg["node_id"],
+                        "port": k,
+                        "type": "udp",
+                        "ip": ",".join([from_map_ipv6_get_ipv4(x) for x in v["one_minute_ips"]]),
+                        "created_at": time.time(),
+                    }
+                )
+
+        if result:
+            with database.atomic():
+                SsNodeIp.insert_many(result).execute()
+            logging.info("push all user one minute connections finished")
 
 
 class Dbv3Transfer(DbTransfer):
     def __init__(self):
         super(Dbv3Transfer, self).__init__()
 
-        self.key_list += ['id']
-        self.key_list += ['method']
-        self.ss_node_info_name = 'node_heartbeat'
-        self.key_list += ['obfs', 'protocol']
+        self.key_list += ["id"]
+        self.key_list += ["method"]
+        self.ss_node_info_name = "node_heartbeat"
+        self.key_list += ["obfs", "protocol"]
         self.start_time = time.time()
 
     def update_all_user(self, dt_transfer):
         update_transfer = {}
 
-        query_head = 'UPDATE user'
-        query_sub_when = ''
-        query_sub_when2 = ''
+        query_head = "UPDATE user"
+        query_sub_when = ""
+        query_sub_when2 = ""
         query_sub_in = None
         last_time = time.time()
 
@@ -408,33 +404,45 @@ class Dbv3Transfer(DbTransfer):
             if id in self.user_pass:
                 del self.user_pass[id]
 
-            query_sub_when += ' WHEN %s THEN u+%s' % (
-                id, int(transfer[0] * int(self.cfg["transfer_mul"])))
-            query_sub_when2 += ' WHEN %s THEN d+%s' % (
-                id, int(transfer[1] * int(self.cfg["transfer_mul"])))
+            query_sub_when += " WHEN %s THEN u+%s" % (id, int(transfer[0] * int(self.cfg["transfer_mul"])))
+            query_sub_when2 += " WHEN %s THEN d+%s" % (id, int(transfer[1] * int(self.cfg["transfer_mul"])))
             update_transfer[id] = transfer
 
             cur = conn.cursor()
             try:
                 if id in self.port_uid_table:
-                    cur.execute("INSERT INTO `user_traffic_log` (`id`, `user_id`, `u`, `d`, `node_id`, `rate`, `traffic`, `log_time`) VALUES (NULL, '" +
-                                str(self.port_uid_table[id]) + "', '" + str(transfer[0]) + "', '" + str(transfer[1]) + "', '" +
-                                str(self.cfg["node_id"]) + "', '" + str(self.cfg["transfer_mul"]) + "', '" +
-                                self.traffic_format((transfer[0] + transfer[1]) * int(self.cfg["transfer_mul"])) + "', unix_timestamp()); ")
+                    cur.execute(
+                        "INSERT INTO `user_traffic_log` (`id`, `user_id`, `u`, `d`, `node_id`, `rate`, `traffic`, `log_time`) "
+                        "VALUES (NULL, %s, %s, %s, %s, %s, %s, unix_timestamp())",
+                        (
+                            str(self.port_uid_table[id]),
+                            str(transfer[0]),
+                            str(transfer[1]),
+                            str(self.cfg["node_id"]),
+                            str(self.cfg["transfer_mul"]),
+                            self.traffic_format((transfer[0] + transfer[1]) * int(self.cfg["transfer_mul"])),
+                        ),
+                    )
             except Exception:
-                logging.warning('no `user_traffic_log` in db')
+                logging.warning("no `user_traffic_log` in db")
             cur.close()
 
             if query_sub_in is not None:
-                query_sub_in += ',%s' % id
+                query_sub_in += ",%s" % id
             else:
-                query_sub_in = '%s' % id
+                query_sub_in = "%s" % id
 
-        if query_sub_when != '':
-            query_sql = query_head + ' SET u = CASE port' + query_sub_when + \
-                ' END, d = CASE port' + query_sub_when2 + \
-                ' END, t = ' + str(int(last_time)) + \
-                ' WHERE port IN (%s)' % query_sub_in
+        if query_sub_when != "":
+            query_sql = (
+                query_head
+                + " SET u = CASE port"
+                + query_sub_when
+                + " END, d = CASE port"
+                + query_sub_when2
+                + " END, t = "
+                + str(int(last_time))
+                + " WHERE port IN (%s)" % query_sub_in
+            )
             cur = conn.cursor()
             try:
                 cur.execute(query_sql)
@@ -445,23 +453,25 @@ class Dbv3Transfer(DbTransfer):
         try:
             cur = conn.cursor()
             try:
-                cur.execute("INSERT INTO `node_online_log` (`id`, `node_id`, `online_user`, `log_time`) VALUES (NULL, '" +
-                            str(self.cfg["node_id"]) + "', '" + str(alive_user_count) + "', unix_timestamp()); ")
+                cur.execute(
+                    "INSERT INTO `node_online_log` (`id`, `node_id`, `online_user`, `log_time`) VALUES (NULL, %s, %s, unix_timestamp())",
+                    (str(self.cfg["node_id"]), str(alive_user_count)),
+                )
             except Exception as e:
                 logging.error(e)
             cur.close()
 
             cur = conn.cursor()
             try:
-                cur.execute("INSERT INTO `" + self.ss_node_info_name + "` (`id`, `node_id`, `uptime`, `load`, `log_time`) VALUES (NULL, '" +
-                            str(self.cfg["node_id"]) + "', '" + str(self.uptime()) + "', '" +
-                            str(self.load()) + "', unix_timestamp()); ")
+                cur.execute(
+                    "INSERT INTO `" + self.ss_node_info_name + "` (`id`, `node_id`, `uptime`, `load`, `log_time`) VALUES (NULL, %s, %s, %s, unix_timestamp())",
+                    (str(self.cfg["node_id"]), str(self.uptime()), str(self.load())),
+                )
             except Exception as e:
                 logging.error(e)
             cur.close()
         except Exception:
-            logging.warning(
-                'no `node_online_log` or `" + self.ss_node_info_name + "` in db')
+            logging.warning('no `node_online_log` or `" + self.ss_node_info_name + "` in db')
 
         conn.close()
         return update_transfer
@@ -469,7 +479,7 @@ class Dbv3Transfer(DbTransfer):
     def pull_db_users(self, conn):
         keys = copy.copy(self.key_list)
         try:
-            switchrule = importloader.load('switchrule')
+            switchrule = importloader.load("switchrule")
             keymap = switchrule.getRowMap()
             for key in keymap:
                 if keymap[key] in keys:
@@ -477,14 +487,13 @@ class Dbv3Transfer(DbTransfer):
                 keys.append(key)
             keys = switchrule.getKeys(keys)
         except Exception:
-            logging.error('load switchrule.py fail')
+            logging.error("load switchrule.py fail")
 
         cur = conn.cursor()
 
-        node_info_keys = ['traffic_rate']
+        node_info_keys = ["traffic_rate"]
         try:
-            cur.execute("SELECT " + ','.join(node_info_keys) +
-                        " FROM node where `id`='" + str(self.cfg["node_id"]) + "'")
+            cur.execute("SELECT " + ",".join(node_info_keys) + " FROM node where `id`=%s", (self.cfg["node_id"],))
             nodeinfo = cur.fetchone()
         except Exception as e:
             logging.error(e)
@@ -494,21 +503,19 @@ class Dbv3Transfer(DbTransfer):
             rows = []
             cur.close()
             conn.commit()
-            logging.warning(
-                'None result when select node info from node in db, maybe you set the incorrect node id')
+            logging.warning("None result when select node info from node in db, maybe you set the incorrect node id")
             return rows
         cur.close()
 
         node_info_dict = {}
         for column in range(len(nodeinfo)):
             node_info_dict[node_info_keys[column]] = nodeinfo[column]
-        self.cfg['transfer_mul'] = float(node_info_dict['traffic_rate'])
+        self.cfg["transfer_mul"] = float(node_info_dict["traffic_rate"])
 
         cur = conn.cursor()
         try:
             rows = []
-            cur.execute("SELECT " + ','.join(keys) +
-                        " FROM user where port != 0 and status = 1")
+            cur.execute("SELECT " + ",".join(keys) + " FROM user where port != 0 and status = 1")
             for r in cur.fetchall():
                 d = {}
                 for column in range(len(keys)):
@@ -521,7 +528,11 @@ class Dbv3Transfer(DbTransfer):
 
     def load(self):
         import os
-        return os.popen("cat /proc/loadavg | awk '{ print $1\" \"$2\" \"$3 }'").readlines()[0]
+
+        # 非 Linux 没有 /proc/loadavg，getloadavg 也不存在，此时按零负载上报而不是让整条心跳写入失败
+        if not hasattr(os, "getloadavg"):
+            return "0.00 0.00 0.00"
+        return " ".join("%.2f" % x for x in os.getloadavg()[:3])
 
     def uptime(self):
         return time.time() - self.start_time
