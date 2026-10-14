@@ -32,7 +32,7 @@ CIDR='Not a valid CIDR notation: [^|]*'
 PW='DEFAULT PASSWORD! Please change it in your config.json!'
 BASE="-m aes-256-cfb -k testrc4 -s 127.0.0.1 -p 8388 -t 300"
 LISTEN="warning: server set to listen on 127.0.0.1:8388, are you sure?"
-STAMP="ShadowsocksR SSRR 3.2.2 2018-05-22"
+STAMP="ShadowsocksR SSRR 4.0.0 2026-10-14"
 
 assert "probe '$VERSION' $LOCAL --version" "$STAMP"
 assert "probe '$VERSION' $SERVER --version" "$STAMP"

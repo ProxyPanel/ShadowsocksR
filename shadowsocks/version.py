@@ -14,6 +14,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-def version():
-    return 'SSRR 3.2.2 2018-05-22'
 
+def version():
+    return "SSRR 4.0.0 2026-10-14"
