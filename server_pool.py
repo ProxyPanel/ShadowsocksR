@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 
 # Copyright (c) 2014 clowwindy
 #
@@ -28,6 +28,7 @@ import threading
 import traceback
 from configloader import get_config
 
+
 class MainThread(threading.Thread):
     def __init__(self, params):
         super(MainThread, self).__init__()
@@ -36,8 +37,8 @@ class MainThread(threading.Thread):
     def run(self):
         ServerPool._loop(*self.params)
 
-class ServerPool(object):
 
+class ServerPool(object):
     instance = None
 
     def __init__(self):
@@ -53,10 +54,8 @@ class ServerPool(object):
             raise Exception("配置加载失败：self.config 是 NoneType")
 
         self.dns_resolver = asyncdns.DNSResolver()
-        if not self.config.get('dns_ipv6', False):
+        if not self.config.get("dns_ipv6", False):
             asyncdns.IPV6_CONNECTION_SUPPORT = False
-
-        self.mgr = None
 
         self.tcp_servers_pool = {}
         self.tcp_ipv6_servers_pool = {}
@@ -65,7 +64,7 @@ class ServerPool(object):
         self.stat_counter = {}
 
         self.loop = eventloop.EventLoop()
-        self.thread = MainThread( (self.loop, self.dns_resolver, self.mgr) )
+        self.thread = MainThread((self.loop, self.dns_resolver))
         self.thread.start()
 
     @staticmethod
@@ -78,10 +77,8 @@ class ServerPool(object):
         self.loop.stop()
 
     @staticmethod
-    def _loop(loop, dns_resolver, mgr):
+    def _loop(loop, dns_resolver):
         try:
-            if mgr is not None:
-                mgr.add_to_loop(loop)
             dns_resolver.add_to_loop(loop)
             loop.run()
         except (KeyboardInterrupt, IOError, OSError) as e:
@@ -102,10 +99,10 @@ class ServerPool(object):
         return ret
 
     def server_run_status(self, port):
-        if 'server' in self.config:
+        if "server" in self.config:
             if port not in self.tcp_servers_pool:
                 return False
-        if 'server_ipv6' in self.config:
+        if "server_ipv6" in self.config:
             if port not in self.tcp_ipv6_servers_pool:
                 return False
         return True
@@ -114,21 +111,21 @@ class ServerPool(object):
         port = int(port)
         ipv6_ok = False
 
-        if 'server_ipv6' in self.config:
+        if "server_ipv6" in self.config:
             if port in self.tcp_ipv6_servers_pool:
-                logging.info("server already at %s:%d" % (self.config['server_ipv6'], port))
-                return 'this port server is already running'
+                logging.info("server already at %s:%d" % (self.config["server_ipv6"], port))
+                return "this port server is already running"
             else:
                 a_config = self.config.copy()
                 a_config.update(user_config)
-                if len(a_config['server_ipv6']) > 2 and a_config['server_ipv6'][0] == "[" and a_config['server_ipv6'][-1] == "]":
-                    a_config['server_ipv6'] = a_config['server_ipv6'][1:-1]
-                a_config['server'] = common.to_str(a_config['server_ipv6'])
-                a_config['server_port'] = port
-                a_config['max_connect'] = 128
-                a_config['method'] = common.to_str(a_config['method'])
+                if len(a_config["server_ipv6"]) > 2 and a_config["server_ipv6"][0] == "[" and a_config["server_ipv6"][-1] == "]":
+                    a_config["server_ipv6"] = a_config["server_ipv6"][1:-1]
+                a_config["server"] = common.to_str(a_config["server_ipv6"])
+                a_config["server_port"] = port
+                a_config["max_connect"] = 128
+                a_config["method"] = common.to_str(a_config["method"])
                 try:
-                    logging.info("starting server at [%s]:%d" % (common.to_str(a_config['server']), port))
+                    logging.info("starting server at [%s]:%d" % (common.to_str(a_config["server"]), port))
 
                     tcp_server = tcprelay.TCPRelay(a_config, self.dns_resolver, False, stat_counter=self.stat_counter)
                     tcp_server.add_to_loop(self.loop)
@@ -138,23 +135,23 @@ class ServerPool(object):
                     udp_server.add_to_loop(self.loop)
                     self.udp_ipv6_servers_pool.update({port: udp_server})
 
-                    if common.to_str(a_config['server_ipv6']) == "::":
+                    if common.to_str(a_config["server_ipv6"]) == "::":
                         ipv6_ok = True
                 except Exception as e:
                     logging.warning("IPV6 %s " % (e,))
 
-        if 'server' in self.config:
+        if "server" in self.config:
             if port in self.tcp_servers_pool:
-                logging.info("server already at %s:%d" % (common.to_str(self.config['server']), port))
-                return 'this port server is already running'
+                logging.info("server already at %s:%d" % (common.to_str(self.config["server"]), port))
+                return "this port server is already running"
             else:
                 a_config = self.config.copy()
                 a_config.update(user_config)
-                a_config['server_port'] = port
-                a_config['max_connect'] = 128
-                a_config['method'] = common.to_str(a_config['method'])
+                a_config["server_port"] = port
+                a_config["max_connect"] = 128
+                a_config["method"] = common.to_str(a_config["method"])
                 try:
-                    logging.info("starting server at %s:%d" % (common.to_str(a_config['server']), port))
+                    logging.info("starting server at %s:%d" % (common.to_str(a_config["server"]), port))
                     tcp_server = tcprelay.TCPRelay(a_config, self.dns_resolver, False)
                     tcp_server.add_to_loop(self.loop)
                     self.tcp_servers_pool.update({port: tcp_server})
@@ -169,18 +166,13 @@ class ServerPool(object):
 
         return True
 
-    def del_server(self, port):
-        port = int(port)
-        logging.info("del server at %d" % port)
-        return True
-
     def cb_del_server(self, port):
         port = int(port)
 
         if port not in self.tcp_servers_pool:
-            logging.info("stopped server at %s:%d already stop" % (self.config['server'], port))
+            logging.info("stopped server at %s:%d already stop" % (self.config["server"], port))
         else:
-            logging.info("stopped server at %s:%d" % (self.config['server'], port))
+            logging.info("stopped server at %s:%d" % (self.config["server"], port))
             try:
                 self.tcp_servers_pool[port].close(True)
                 del self.tcp_servers_pool[port]
@@ -192,11 +184,11 @@ class ServerPool(object):
             except Exception as e:
                 logging.warning(e)
 
-        if 'server_ipv6' in self.config:
+        if "server_ipv6" in self.config:
             if port not in self.tcp_ipv6_servers_pool:
-                logging.info("stopped server at [%s]:%d already stop" % (self.config['server_ipv6'], port))
+                logging.info("stopped server at [%s]:%d already stop" % (self.config["server_ipv6"], port))
             else:
-                logging.info("stopped server at [%s]:%d" % (self.config['server_ipv6'], port))
+                logging.info("stopped server at [%s]:%d" % (self.config["server_ipv6"], port))
                 try:
                     self.tcp_ipv6_servers_pool[port].close(True)
                     del self.tcp_ipv6_servers_pool[port]
@@ -233,7 +225,6 @@ class ServerPool(object):
 
     def get_server_transfer(self, port):
         port = int(port)
-        struct.pack('<I', port)
         ret = [0, 0]
         if port in self.tcp_servers_pool:
             ret[0], ret[1] = self.tcp_servers_pool[port].get_ud()
@@ -256,12 +247,12 @@ class ServerPool(object):
 
     def update_mu_transfer(self, user_dict, u, d):
         for uid in u:
-            port = struct.unpack('<I', uid)[0]
+            port = struct.unpack("<I", uid)[0]
             if port not in user_dict:
                 user_dict[port] = [0, 0]
             user_dict[port][0] += u[uid]
         for uid in d:
-            port = struct.unpack('<I', uid)[0]
+            port = struct.unpack("<I", uid)[0]
             if port not in user_dict:
                 user_dict[port] = [0, 0]
             user_dict[port][1] += d[uid]
@@ -287,4 +278,3 @@ class ServerPool(object):
             u, d = self.get_server_mu_transfer(self.udp_ipv6_servers_pool[port])
             self.update_mu_transfer(ret, u, d)
         return ret
-

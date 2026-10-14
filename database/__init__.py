@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
-# @Time    : 2018-10-27 14:28
-# @Author  : Sakura
-# @Site    :
-# @File    : __init__.py.py
-# @Software: PyCharm
-
 from peewee import CharField, IntegerField, Model, MySQLDatabase, SQL, TextField
 
 from configloader import mysql_config
+
 
 def pymysql_ssl_config(cfg):
     """ssl_enable=1 就必须走 TLS：没配 ca 时按不校验证书握手，配了 ca 才校验"""
@@ -29,7 +24,7 @@ connect_args = {
     "password": mysql_config["password"],
     "charset": "utf8mb4",
 }
-if mysql_config['ssl_enable'] == 1:
+if mysql_config["ssl_enable"] == 1:
     connect_args["ssl"] = pymysql_ssl_config(mysql_config)
 
 database = MySQLDatabase(mysql_config["db"], **connect_args)
@@ -43,10 +38,9 @@ class BaseModel(Model):
 class SsNodeIp(BaseModel):
     created_at = IntegerField(constraints=[SQL("DEFAULT 0")])
     ip = TextField(null=True)
-    node = IntegerField(column_name='node_id',
-                        constraints=[SQL("DEFAULT NULL")])
+    node = IntegerField(column_name="node_id", constraints=[SQL("DEFAULT NULL")])
     port = IntegerField(constraints=[SQL("DEFAULT 0")])
     type = CharField(constraints=[SQL("DEFAULT 'tcp'")])
 
     class Meta:
-        table_name = 'node_online_ip'
+        table_name = "node_online_ip"
