@@ -19,14 +19,13 @@ import os
 import logging
 import signal
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import inspect
 
     file_path = os.path.dirname(os.path.realpath(inspect.getfile(inspect.currentframe())))
-    sys.path.insert(0, os.path.join(file_path, '../'))
+    sys.path.insert(0, os.path.join(file_path, "../"))
 
-from shadowsocks import shell, daemon, eventloop, tcprelay, udprelay, \
-    asyncdns, manager, common
+from shadowsocks import shell, daemon, eventloop, tcprelay, udprelay, asyncdns, manager, common
 
 
 def main():
@@ -40,105 +39,101 @@ def main():
 
     try:
         import resource
-        logging.info(
-            'current process RLIMIT_NOFILE resource: soft %d hard %d' % resource.getrlimit(resource.RLIMIT_NOFILE))
+
+        logging.info("current process RLIMIT_NOFILE resource: soft %d hard %d" % resource.getrlimit(resource.RLIMIT_NOFILE))
     except ImportError:
         pass
 
-    if config['port_password']:
+    if config["port_password"]:
         pass
     else:
-        config['port_password'] = {}
-        server_port = config['server_port']
+        config["port_password"] = {}
+        server_port = config["server_port"]
         if isinstance(server_port, list):
             for a_server_port in server_port:
-                config['port_password'][a_server_port] = config['password']
+                config["port_password"][a_server_port] = config["password"]
         else:
-            config['port_password'][str(server_port)] = config['password']
+            config["port_password"][str(server_port)] = config["password"]
 
-    if not config.get('dns_ipv6', False):
+    if not config.get("dns_ipv6", False):
         asyncdns.IPV6_CONNECTION_SUPPORT = False
 
-    if config.get('manager_address', 0):
-        logging.info('entering manager mode')
+    if config.get("manager_address", 0):
+        logging.info("entering manager mode")
         manager.run(config)
         return
 
     tcp_servers = []
     udp_servers = []
-    dns_resolver = asyncdns.DNSResolver(config['black_hostname_list'])
-    if int(config['workers']) > 1:
+    dns_resolver = asyncdns.DNSResolver(config["black_hostname_list"])
+    if int(config["workers"]) > 1:
         stat_counter_dict = None
     else:
         stat_counter_dict = {}
-    port_password = config['port_password']
-    config_password = config.get('password', 'm')
-    del config['port_password']
+    port_password = config["port_password"]
+    config_password = config.get("password", "m")
+    del config["port_password"]
     for port, password_obfs in port_password.items():
         method = config["method"]
-        protocol = config.get("protocol", 'origin')
-        protocol_param = config.get("protocol_param", '')
-        obfs = config.get("obfs", 'plain')
-        obfs_param = config.get("obfs_param", '')
-        bind = config.get("out_bind", '')
-        bindv6 = config.get("out_bindv6", '')
+        protocol = config.get("protocol", "origin")
+        protocol_param = config.get("protocol_param", "")
+        obfs = config.get("obfs", "plain")
+        obfs_param = config.get("obfs_param", "")
+        bind = config.get("out_bind", "")
+        bindv6 = config.get("out_bindv6", "")
         if isinstance(password_obfs, list):
             password = password_obfs[0]
             obfs = common.to_str(password_obfs[1])
             if len(password_obfs) > 2:
                 protocol = common.to_str(password_obfs[2])
         elif isinstance(password_obfs, dict):
-            password = password_obfs.get('password', config_password)
-            method = common.to_str(password_obfs.get('method', method))
-            protocol = common.to_str(password_obfs.get('protocol', protocol))
-            protocol_param = common.to_str(password_obfs.get('protocol_param', protocol_param))
-            obfs = common.to_str(password_obfs.get('obfs', obfs))
-            obfs_param = common.to_str(password_obfs.get('obfs_param', obfs_param))
-            bind = password_obfs.get('out_bind', bind)
-            bindv6 = password_obfs.get('out_bindv6', bindv6)
+            password = password_obfs.get("password", config_password)
+            method = common.to_str(password_obfs.get("method", method))
+            protocol = common.to_str(password_obfs.get("protocol", protocol))
+            protocol_param = common.to_str(password_obfs.get("protocol_param", protocol_param))
+            obfs = common.to_str(password_obfs.get("obfs", obfs))
+            obfs_param = common.to_str(password_obfs.get("obfs_param", obfs_param))
+            bind = password_obfs.get("out_bind", bind)
+            bindv6 = password_obfs.get("out_bindv6", bindv6)
         else:
             password = password_obfs
         a_config = config.copy()
         ipv6_ok = False
-        logging.info("server start with protocol[%s] password [%s] method [%s] obfs [%s] obfs_param [%s]" %
-                     (protocol, password, method, obfs, obfs_param))
-        if 'server_ipv6' in a_config:
+        logging.info("server start with protocol[%s] password [%s] method [%s] obfs [%s] obfs_param [%s]" % (protocol, password, method, obfs, obfs_param))
+        if "server_ipv6" in a_config:
             try:
-                if len(a_config['server_ipv6']) > 2 and a_config['server_ipv6'][0] == "[" and a_config['server_ipv6'][
-                    -1] == "]":
-                    a_config['server_ipv6'] = a_config['server_ipv6'][1:-1]
-                a_config['server_port'] = int(port)
-                a_config['password'] = password
-                a_config['method'] = method
-                a_config['protocol'] = protocol
-                a_config['protocol_param'] = protocol_param
-                a_config['obfs'] = obfs
-                a_config['obfs_param'] = obfs_param
-                a_config['out_bind'] = bind
-                a_config['out_bindv6'] = bindv6
-                a_config['server'] = common.to_str(a_config['server_ipv6'])
-                logging.info("starting server at [%s]:%d" %
-                             (a_config['server'], int(port)))
+                if len(a_config["server_ipv6"]) > 2 and a_config["server_ipv6"][0] == "[" and a_config["server_ipv6"][-1] == "]":
+                    a_config["server_ipv6"] = a_config["server_ipv6"][1:-1]
+                a_config["server_port"] = int(port)
+                a_config["password"] = password
+                a_config["method"] = method
+                a_config["protocol"] = protocol
+                a_config["protocol_param"] = protocol_param
+                a_config["obfs"] = obfs
+                a_config["obfs_param"] = obfs_param
+                a_config["out_bind"] = bind
+                a_config["out_bindv6"] = bindv6
+                a_config["server"] = common.to_str(a_config["server_ipv6"])
+                logging.info("starting server at [%s]:%d" % (a_config["server"], int(port)))
                 tcp_servers.append(tcprelay.TCPRelay(a_config, dns_resolver, False, stat_counter=stat_counter_dict))
                 udp_servers.append(udprelay.UDPRelay(a_config, dns_resolver, False, stat_counter=stat_counter_dict))
-                if a_config['server_ipv6'] == "::":
+                if a_config["server_ipv6"] == "::":
                     ipv6_ok = True
             except Exception as e:
                 shell.print_exception(e)
 
         try:
             a_config = config.copy()
-            a_config['server_port'] = int(port)
-            a_config['password'] = password
-            a_config['method'] = method
-            a_config['protocol'] = protocol
-            a_config['protocol_param'] = protocol_param
-            a_config['obfs'] = obfs
-            a_config['obfs_param'] = obfs_param
-            a_config['out_bind'] = bind
-            a_config['out_bindv6'] = bindv6
-            logging.info("starting server at %s:%d" %
-                         (a_config['server'], int(port)))
+            a_config["server_port"] = int(port)
+            a_config["password"] = password
+            a_config["method"] = method
+            a_config["protocol"] = protocol
+            a_config["protocol_param"] = protocol_param
+            a_config["obfs"] = obfs
+            a_config["obfs_param"] = obfs_param
+            a_config["out_bind"] = bind
+            a_config["out_bindv6"] = bindv6
+            logging.info("starting server at %s:%d" % (a_config["server"], int(port)))
             tcp_servers.append(tcprelay.TCPRelay(a_config, dns_resolver, False, stat_counter=stat_counter_dict))
             udp_servers.append(udprelay.UDPRelay(a_config, dns_resolver, False, stat_counter=stat_counter_dict))
         except Exception as e:
@@ -147,12 +142,10 @@ def main():
 
     def run_server():
         def child_handler(signum, _):
-            logging.warning('received SIGQUIT, doing graceful shutting down..')
-            list(map(lambda s: s.close(next_tick=True),
-                     tcp_servers + udp_servers))
+            logging.warning("received SIGQUIT, doing graceful shutting down..")
+            list(map(lambda s: s.close(next_tick=True), tcp_servers + udp_servers))
 
-        signal.signal(getattr(signal, 'SIGQUIT', signal.SIGTERM),
-                      child_handler)
+        signal.signal(getattr(signal, "SIGQUIT", signal.SIGTERM), child_handler)
 
         def int_handler(signum, _):
             sys.exit(1)
@@ -164,26 +157,27 @@ def main():
             dns_resolver.add_to_loop(loop)
             list(map(lambda s: s.add_to_loop(loop), tcp_servers + udp_servers))
 
-            daemon.set_user(config.get('user', None))
+            daemon.set_user(config.get("user", None))
             loop.run()
         except Exception as e:
             shell.print_exception(e)
             sys.exit(1)
 
-    if int(config['workers']) > 1:
-        if os.name == 'posix':
+    if int(config["workers"]) > 1:
+        if os.name == "posix":
             children = []
             is_child = False
-            for i in range(0, int(config['workers'])):
+            for i in range(0, int(config["workers"])):
                 r = os.fork()
                 if r == 0:
-                    logging.info('worker started')
+                    logging.info("worker started")
                     is_child = True
                     run_server()
                     break
                 else:
                     children.append(r)
             if not is_child:
+
                 def handler(signum, _):
                     for pid in children:
                         try:
@@ -207,11 +201,11 @@ def main():
                 for child in children:
                     os.waitpid(child, 0)
         else:
-            logging.warning('worker is only available on Unix/Linux')
+            logging.warning("worker is only available on Unix/Linux")
             run_server()
     else:
         run_server()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -17,12 +17,13 @@
 import logging
 import time
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import os
     import sys
     import inspect
+
     file_path = os.path.dirname(os.path.realpath(inspect.getfile(inspect.currentframe())))
-    sys.path.insert(0, os.path.join(file_path, '../'))
+    sys.path.insert(0, os.path.join(file_path, "../"))
 
 from collections import OrderedDict
 from collections.abc import MutableMapping
@@ -35,6 +36,7 @@ from collections.abc import MutableMapping
 # no metter how large the cache or timeout value is
 
 SWEEP_MAX_ITEMS = 1024
+
 
 class LRUCache(MutableMapping):
     """This class is not thread safe"""
@@ -99,7 +101,7 @@ class LRUCache(MutableMapping):
                 self.close_callback(value)
             c += 1
         if c:
-            logging.debug('%d keys swept' % c)
+            logging.debug("%d keys swept" % c)
         return c < SWEEP_MAX_ITEMS
 
     def clear(self, keep):
@@ -116,39 +118,40 @@ class LRUCache(MutableMapping):
             del self._keys_to_last_time[key]
             c += 1
         if c:
-            logging.debug('%d keys swept' % c)
+            logging.debug("%d keys swept" % c)
         return c < SWEEP_MAX_ITEMS
+
 
 def test():
     c = LRUCache(timeout=0.3)
 
-    c['a'] = 1
-    assert c['a'] == 1
-    c['a'] = 1
+    c["a"] = 1
+    assert c["a"] == 1
+    c["a"] = 1
 
     time.sleep(0.5)
     c.sweep()
-    assert 'a' not in c
+    assert "a" not in c
 
-    c['a'] = 2
-    c['b'] = 3
+    c["a"] = 2
+    c["b"] = 3
     time.sleep(0.2)
     c.sweep()
-    assert c['a'] == 2
-    assert c['b'] == 3
+    assert c["a"] == 2
+    assert c["b"] == 3
 
     time.sleep(0.2)
     c.sweep()
-    c['b']
+    c["b"]
     time.sleep(0.2)
     c.sweep()
-    assert 'a' not in c
-    assert c['b'] == 3
+    assert "a" not in c
+    assert c["b"] == 3
 
     time.sleep(0.5)
     c.sweep()
-    assert 'a' not in c
-    assert 'b' not in c
+    assert "a" not in c
+    assert "b" not in c
 
     global close_cb_called
     close_cb_called = False
@@ -159,12 +162,13 @@ def test():
         close_cb_called = True
 
     c = LRUCache(timeout=0.1, close_callback=close_cb)
-    c['s'] = 1
-    c['s']
+    c["s"] = 1
+    c["s"]
     time.sleep(0.1)
-    c['s']
+    c["s"]
     time.sleep(0.3)
     c.sweep()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test()

@@ -28,8 +28,7 @@ from collections import defaultdict
 from shadowsocks import shell
 
 
-__all__ = ['EventLoop', 'POLL_NULL', 'POLL_IN', 'POLL_OUT', 'POLL_ERR',
-           'POLL_HUP', 'POLL_NVAL', 'EVENT_NAMES']
+__all__ = ["EventLoop", "POLL_NULL", "POLL_IN", "POLL_OUT", "POLL_ERR", "POLL_HUP", "POLL_NVAL", "EVENT_NAMES"]
 
 POLL_NULL = 0x00
 POLL_IN = 0x01
@@ -40,12 +39,12 @@ POLL_NVAL = 0x20
 
 
 EVENT_NAMES = {
-    POLL_NULL: 'POLL_NULL',
-    POLL_IN: 'POLL_IN',
-    POLL_OUT: 'POLL_OUT',
-    POLL_ERR: 'POLL_ERR',
-    POLL_HUP: 'POLL_HUP',
-    POLL_NVAL: 'POLL_NVAL',
+    POLL_NULL: "POLL_NULL",
+    POLL_IN: "POLL_IN",
+    POLL_OUT: "POLL_OUT",
+    POLL_ERR: "POLL_ERR",
+    POLL_HUP: "POLL_HUP",
+    POLL_NVAL: "POLL_NVAL",
 }
 
 # we check timeouts every TIMEOUT_PRECISION seconds
@@ -53,7 +52,6 @@ TIMEOUT_PRECISION = 1
 
 
 class KqueueLoop(object):
-
     MAX_EVENTS = 1024
 
     def __init__(self):
@@ -99,15 +97,13 @@ class KqueueLoop(object):
 
 
 class SelectLoop(object):
-
     def __init__(self):
         self._r_list = set()
         self._w_list = set()
         self._x_list = set()
 
     def poll(self, timeout):
-        r, w, x = select.select(self._r_list, self._w_list, self._x_list,
-                                timeout)
+        r, w, x = select.select(self._r_list, self._w_list, self._x_list, timeout)
         results = defaultdict(lambda: POLL_NULL)
         for p in [(r, POLL_IN), (w, POLL_OUT), (x, POLL_ERR)]:
             for fd in p[0]:
@@ -140,24 +136,23 @@ class SelectLoop(object):
 
 class EventLoop(object):
     def __init__(self):
-        if hasattr(select, 'epoll'):
+        if hasattr(select, "epoll"):
             self._impl = select.epoll()
-            model = 'epoll'
-        elif hasattr(select, 'kqueue'):
+            model = "epoll"
+        elif hasattr(select, "kqueue"):
             self._impl = KqueueLoop()
-            model = 'kqueue'
-        elif hasattr(select, 'select'):
+            model = "kqueue"
+        elif hasattr(select, "select"):
             self._impl = SelectLoop()
-            model = 'select'
+            model = "select"
         else:
-            raise Exception('can not find any available functions in select '
-                            'package')
+            raise Exception("can not find any available functions in select package")
         self._fdmap = {}  # (f, handler)
         self._last_time = time.time()
         self._periodic_callbacks = []
         self._periodic_callbacks_tick = {}
         self._stopping = False
-        logging.debug('using event model: %s', model)
+        logging.debug("using event model: %s", model)
 
     def poll(self, timeout=None):
         events = self._impl.poll(timeout)
@@ -207,10 +202,11 @@ class EventLoop(object):
                     # EINTR: Happens when received a signal
                     # handles them as soon as possible
                     asap = True
-                    logging.debug('poll:%s', e)
+                    logging.debug("poll:%s", e)
                 else:
-                    logging.error('poll:%s', e)
+                    logging.error("poll:%s", e)
                     import traceback
+
                     traceback.print_exc()
                     continue
 
@@ -249,7 +245,7 @@ def errno_from_exception(e):
     errno.
     """
 
-    if hasattr(e, 'errno'):
+    if hasattr(e, "errno"):
         return e.errno
     elif e.args:
         return e.args[0]

@@ -26,7 +26,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["ruff>=0.17"]
+dev = ["ruff>=0.17", "pytest>=9.1"]
 
 [project.scripts]
 sslocal = "shadowsocks.local:main"
@@ -46,3 +46,10 @@ line-length = 160
 select = ["E4", "E7", "E9", "F", "W"]
 # 行长不做统一；type(x) == type(y) 与变量名 l 是本仓既有写法，不是缺陷
 ignore = ["E501", "E721", "E741"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# 单测直接 import 仓库根模块（db_transfer 等），tests/ 不是包
+pythonpath = ["."]
+# tests/test.py 是代理端到端功能测试的驱动脚本，不是用例
+addopts = "--ignore=tests/test.py"

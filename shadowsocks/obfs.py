@@ -26,12 +26,15 @@ method_supported.update(verify.obfs_map)
 method_supported.update(auth.obfs_map)
 method_supported.update(auth_chain.obfs_map)
 
+
 def mu_protocol():
     return ["auth_aes128_md5", "auth_aes128_sha1", "auth_chain_a", "auth_chain_b", "auth_chain_c", "auth_chain_d", "auth_chain_e"]
+
 
 class server_info(object):
     def __init__(self, data):
         self.data = data
+
 
 class obfs(object):
     def __init__(self, method):
@@ -41,7 +44,7 @@ class obfs(object):
         if self._method_info:
             self.obfs = self.get_obfs(method)
         else:
-            raise Exception('obfs plugin [%s] not supported' % method)
+            raise Exception("obfs plugin [%s] not supported" % method)
 
     def init_data(self):
         return self.obfs.init_data()
@@ -103,4 +106,3 @@ class obfs(object):
     def dispose(self):
         self.obfs.dispose()
         del self.obfs
-

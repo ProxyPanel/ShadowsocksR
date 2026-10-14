@@ -36,6 +36,7 @@ def random_string(length):
     except NotImplementedError:
         return openssl.rand_bytes(length)
 
+
 cached_keys = lru_cache.LRUCache(timeout=180)
 
 
@@ -46,13 +47,13 @@ def try_cipher(key, method=None):
 def EVP_BytesToKey(password, key_len, iv_len, cache):
     # equivalent to OpenSSL's EVP_BytesToKey() with count 1
     # so that we make the same key and iv as nodejs version
-    cached_key = '%s-%d-%d' % (password, key_len, iv_len)
+    cached_key = "%s-%d-%d" % (password, key_len, iv_len)
     r = cached_keys.get(cached_key, None)
     if r:
         return r
     m = []
     i = 0
-    while len(b''.join(m)) < (key_len + iv_len):
+    while len(b"".join(m)) < (key_len + iv_len):
         md5 = hashlib.md5()
         data = password
         if i > 0:
@@ -60,9 +61,9 @@ def EVP_BytesToKey(password, key_len, iv_len, cache):
         md5.update(data)
         m.append(md5.digest())
         i += 1
-    ms = b''.join(m)
+    ms = b"".join(m)
     key = ms[:key_len]
-    iv = ms[key_len:key_len + iv_len]
+    iv = ms[key_len : key_len + iv_len]
     if cache:
         cached_keys[cached_key] = (key, iv)
         cached_keys.sweep()
@@ -70,26 +71,25 @@ def EVP_BytesToKey(password, key_len, iv_len, cache):
 
 
 class Encryptor(object):
-    def __init__(self, key, method, iv = None, cache = False):
+    def __init__(self, key, method, iv=None, cache=False):
         self.key = key
         self.method = method
         self.iv = None
         self.iv_sent = False
-        self.cipher_iv = b''
-        self.iv_buf = b''
-        self.cipher_key = b''
+        self.cipher_iv = b""
+        self.iv_buf = b""
+        self.cipher_key = b""
         self.decipher = None
         self.cache = cache
         method = method.lower()
         self._method_info = self.get_method_info(method)
         if self._method_info:
             if iv is None or len(iv) != self._method_info[1]:
-                self.cipher = self.get_cipher(key, method, 1,
-                                          random_string(self._method_info[1]))
+                self.cipher = self.get_cipher(key, method, 1, random_string(self._method_info[1]))
             else:
                 self.cipher = self.get_cipher(key, method, 1, iv)
         else:
-            logging.error('method %s not supported' % method)
+            logging.error("method %s not supported" % method)
             sys.exit(1)
 
     def get_method_info(self, method):
@@ -107,12 +107,12 @@ class Encryptor(object):
             key, iv_ = EVP_BytesToKey(password, m[0], m[1], self.cache)
         else:
             # key_length == 0 indicates we should use the key directly
-            key, iv = password, b''
+            key, iv = password, b""
 
-        iv = iv[:m[1]]
+        iv = iv[: m[1]]
         if op == 1:
             # this iv is for cipher not decipher
-            self.cipher_iv = iv[:m[1]]
+            self.cipher_iv = iv[: m[1]]
         self.cipher_key = key
         return m[2](method, key, iv, op)
 
@@ -131,7 +131,7 @@ class Encryptor(object):
     def decrypt(self, buf):
         if len(buf) == 0:
             return buf
-        if self.decipher is not None: #optimize
+        if self.decipher is not None:  # optimize
             return self.decipher.update(buf)
 
         decipher_iv_len = self._method_info[1]
@@ -139,18 +139,18 @@ class Encryptor(object):
             self.iv_buf += buf
         if len(self.iv_buf) > decipher_iv_len:
             decipher_iv = self.iv_buf[:decipher_iv_len]
-            self.decipher = self.get_cipher(self.key, self.method, 0,
-                                            iv=decipher_iv)
+            self.decipher = self.get_cipher(self.key, self.method, 0, iv=decipher_iv)
             buf = self.iv_buf[decipher_iv_len:]
             del self.iv_buf
             return self.decipher.update(buf)
         else:
-            return b''
+            return b""
 
     def dispose(self):
         if self.decipher is not None:
             self.decipher.clean()
             self.decipher = None
+
 
 def encrypt_all(password, method, op, data):
     result = []
@@ -168,7 +168,8 @@ def encrypt_all(password, method, op, data):
         data = data[iv_len:]
     cipher = m(method, key, iv, op)
     result.append(cipher.update(data))
-    return b''.join(result)
+    return b"".join(result)
+
 
 def encrypt_key(password, method):
     method = method.lower()
@@ -179,15 +180,18 @@ def encrypt_key(password, method):
         key = password
     return key
 
+
 def encrypt_iv_len(method):
     method = method.lower()
     (key_len, iv_len, m) = method_supported[method]
     return iv_len
 
+
 def encrypt_new_iv(method):
     method = method.lower()
     (key_len, iv_len, m) = method_supported[method]
     return random_string(iv_len)
+
 
 def encrypt_all_iv(key, method, op, data, ref_iv):
     result = []
@@ -202,26 +206,27 @@ def encrypt_all_iv(key, method, op, data, ref_iv):
         ref_iv[0] = iv
     cipher = m(method, key, iv, op)
     result.append(cipher.update(data))
-    return b''.join(result)
+    return b"".join(result)
 
 
 CIPHERS_TO_TEST = [
-    'aes-128-cfb',
-    'aes-256-cfb',
-    'rc4-md5',
-    'salsa20',
-    'chacha20',
-    'table',
+    "aes-128-cfb",
+    "aes-256-cfb",
+    "rc4-md5",
+    "salsa20",
+    "chacha20",
+    "table",
 ]
 
 
 def test_encryptor():
     from os import urandom
+
     plain = urandom(10240)
     for method in CIPHERS_TO_TEST:
         logging.warning(method)
-        encryptor = Encryptor(b'key', method)
-        decryptor = Encryptor(b'key', method)
+        encryptor = Encryptor(b"key", method)
+        decryptor = Encryptor(b"key", method)
         cipher = encryptor.encrypt(plain)
         plain2 = decryptor.decrypt(cipher)
         assert plain == plain2
@@ -229,14 +234,15 @@ def test_encryptor():
 
 def test_encrypt_all():
     from os import urandom
+
     plain = urandom(10240)
     for method in CIPHERS_TO_TEST:
         logging.warning(method)
-        cipher = encrypt_all(b'key', method, 1, plain)
-        plain2 = encrypt_all(b'key', method, 0, cipher)
+        cipher = encrypt_all(b"key", method, 1, plain)
+        plain2 = encrypt_all(b"key", method, 0, cipher)
         assert plain == plain2
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_encrypt_all()
     test_encryptor()

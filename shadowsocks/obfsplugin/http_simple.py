@@ -25,29 +25,35 @@ from shadowsocks import common
 from shadowsocks.obfsplugin import plain
 from shadowsocks.common import to_bytes
 
+
 def create_http_simple_obfs(method):
     return http_simple(method)
+
 
 def create_http_post_obfs(method):
     return http_post(method)
 
+
 def create_random_head_obfs(method):
     return random_head(method)
 
+
 obfs_map = {
-        'http_simple': (create_http_simple_obfs,),
-        'http_simple_compatible': (create_http_simple_obfs,),
-        'http_post': (create_http_post_obfs,),
-        'http_post_compatible': (create_http_post_obfs,),
-        'random_head': (create_random_head_obfs,),
-        'random_head_compatible': (create_random_head_obfs,),
+    "http_simple": (create_http_simple_obfs,),
+    "http_simple_compatible": (create_http_simple_obfs,),
+    "http_post": (create_http_post_obfs,),
+    "http_post_compatible": (create_http_post_obfs,),
+    "random_head": (create_random_head_obfs,),
+    "random_head_compatible": (create_random_head_obfs,),
 }
+
 
 def match_begin(str1, str2):
     if len(str1) >= len(str2):
-        if str1[:len(str2)] == str2:
+        if str1[: len(str2)] == str2:
             return True
     return False
+
 
 class http_simple(plain.plain):
     def __init__(self, method):
@@ -56,9 +62,10 @@ class http_simple(plain.plain):
         self.has_recv_header = False
         self.host = None
         self.port = 0
-        self.recv_buffer = b''
+        self.recv_buffer = b""
         # TODO user config user_agent
-        self.user_agent = [b"Mozilla/5.0 (Windows NT 6.3; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0",
+        self.user_agent = [
+            b"Mozilla/5.0 (Windows NT 6.3; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0",
             b"Mozilla/5.0 (Windows NT 6.3; WOW64; rv:40.0) Gecko/20100101 Firefox/44.0",
             b"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36",
             b"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.11 (KHTML, like Gecko) Ubuntu/11.10 Chromium/27.0.1453.93 Chrome/27.0.1453.93 Safari/537.36",
@@ -69,14 +76,15 @@ class http_simple(plain.plain):
             b"Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko",
             b"Mozilla/5.0 (Linux; Android 4.4; Nexus 5 Build/BuildID) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/30.0.0.0 Mobile Safari/537.36",
             b"Mozilla/5.0 (iPad; CPU OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3",
-            b"Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3"]
+            b"Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3",
+        ]
 
     def encode_head(self, buf):
         hexstr = binascii.hexlify(buf)
         chs = []
         for i in range(0, len(hexstr), 2):
-            chs.append(b"%" + hexstr[i:i+2])
-        return b''.join(chs)
+            chs.append(b"%" + hexstr[i : i + 2])
+        return b"".join(chs)
 
     def client_encode(self, buf):
         if self.has_sent_header:
@@ -88,17 +96,17 @@ class http_simple(plain.plain):
             headlen = len(buf)
         headdata = buf[:headlen]
         buf = buf[headlen:]
-        port = b''
+        port = b""
         if self.server_info.port != 80:
-            port = b':' + to_bytes(str(self.server_info.port))
+            port = b":" + to_bytes(str(self.server_info.port))
         body = None
-        hosts = (self.server_info.obfs_param or self.server_info.host)
+        hosts = self.server_info.obfs_param or self.server_info.host
         pos = hosts.find("#")
         if pos >= 0:
-            body = hosts[pos + 1:].replace("\n", "\r\n")
+            body = hosts[pos + 1 :].replace("\n", "\r\n")
             body = body.replace("\\n", "\r\n")
             hosts = hosts[:pos]
-        hosts = hosts.split(',')
+        hosts = hosts.split(",")
         host = random.choice(hosts)
         http_head = b"GET /" + self.encode_head(headdata) + b" HTTP/1.1\r\n"
         http_head += b"Host: " + to_bytes(host) + port + b"\r\n"
@@ -113,32 +121,32 @@ class http_simple(plain.plain):
     def client_decode(self, buf):
         if self.has_recv_header:
             return (buf, False)
-        pos = buf.find(b'\r\n\r\n')
+        pos = buf.find(b"\r\n\r\n")
         if pos >= 0:
             self.has_recv_header = True
-            return (buf[pos + 4:], False)
+            return (buf[pos + 4 :], False)
         else:
-            return (b'', False)
+            return (b"", False)
 
     def server_encode(self, buf):
         if self.has_sent_header:
             return buf
 
-        header = b'HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Encoding: gzip\r\nContent-Type: text/html\r\nDate: '
-        header += to_bytes(datetime.datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT'))
-        header += b'\r\nServer: nginx\r\nVary: Accept-Encoding\r\n\r\n'
+        header = b"HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Encoding: gzip\r\nContent-Type: text/html\r\nDate: "
+        header += to_bytes(datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT"))
+        header += b"\r\nServer: nginx\r\nVary: Accept-Encoding\r\n\r\n"
         self.has_sent_header = True
         return header + buf
 
     def get_data_from_http_header(self, buf):
-        ret_buf = b''
-        lines = buf.split(b'\r\n')
+        ret_buf = b""
+        lines = buf.split(b"\r\n")
         if lines and len(lines) > 1:
-            hex_items = lines[0].split(b'%')
+            hex_items = lines[0].split(b"%")
             if hex_items and len(hex_items) > 1:
                 for index in range(1, len(hex_items)):
                     if len(hex_items[index]) < 2:
-                        ret_buf += binascii.unhexlify('0' + hex_items[index])
+                        ret_buf += binascii.unhexlify("0" + hex_items[index])
                         break
                     elif len(hex_items[index]) > 2:
                         ret_buf += binascii.unhexlify(hex_items[index][:2])
@@ -146,10 +154,10 @@ class http_simple(plain.plain):
                     else:
                         ret_buf += binascii.unhexlify(hex_items[index])
                 return ret_buf
-        return b''
+        return b""
 
     def get_host_from_http_header(self, buf):
-        lines = buf.split(b'\r\n')
+        lines = buf.split(b"\r\n")
         if lines and len(lines) > 1:
             for line in lines:
                 if match_begin(line, b"Host: "):
@@ -158,14 +166,14 @@ class http_simple(plain.plain):
     def not_match_return(self, buf):
         self.has_sent_header = True
         self.has_recv_header = True
-        if self.method == 'http_simple':
-            return (b'E'*2048, False, False)
+        if self.method == "http_simple":
+            return (b"E" * 2048, False, False)
         return (buf, True, False)
 
     def error_return(self, buf):
         self.has_sent_header = True
         self.has_recv_header = True
-        return (b'E'*2048, False, False)
+        return (b"E" * 2048, False, False)
 
     def server_decode(self, buf):
         if self.has_recv_header:
@@ -174,27 +182,27 @@ class http_simple(plain.plain):
         self.recv_buffer += buf
         buf = self.recv_buffer
         if len(buf) > 10:
-            if match_begin(buf, b'GET ') or match_begin(buf, b'POST '):
+            if match_begin(buf, b"GET ") or match_begin(buf, b"POST "):
                 if len(buf) > 65536:
                     self.recv_buffer = None
-                    logging.warning('http_simple: over size')
+                    logging.warning("http_simple: over size")
                     return self.not_match_return(buf)
-            else: #not http header, run on original protocol
+            else:  # not http header, run on original protocol
                 self.recv_buffer = None
-                logging.debug('http_simple: not match begin')
+                logging.debug("http_simple: not match begin")
                 return self.not_match_return(buf)
         else:
-            return (b'', True, False)
+            return (b"", True, False)
 
-        if b'\r\n\r\n' in buf:
-            datas = buf.split(b'\r\n\r\n', 1)
+        if b"\r\n\r\n" in buf:
+            datas = buf.split(b"\r\n\r\n", 1)
             ret_buf = self.get_data_from_http_header(buf)
             host = self.get_host_from_http_header(buf)
             if host and self.server_info.obfs_param:
                 pos = host.find(":")
                 if pos >= 0:
                     host = host[:pos]
-                hosts = self.server_info.obfs_param.split(',')
+                hosts = self.server_info.obfs_param.split(",")
                 if host not in hosts:
                     return self.not_match_return(buf)
             if len(ret_buf) < 4:
@@ -206,14 +214,15 @@ class http_simple(plain.plain):
                 return (ret_buf, True, False)
             return self.not_match_return(buf)
         else:
-            return (b'', True, False)
+            return (b"", True, False)
+
 
 class http_post(http_simple):
     def __init__(self, method):
         super(http_post, self).__init__(method)
 
     def boundary(self):
-        return to_bytes(''.join([random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789") for i in range(32)]))
+        return to_bytes("".join([random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789") for i in range(32)]))
 
     def client_encode(self, buf):
         if self.has_sent_header:
@@ -225,16 +234,16 @@ class http_post(http_simple):
             headlen = len(buf)
         headdata = buf[:headlen]
         buf = buf[headlen:]
-        port = b''
+        port = b""
         if self.server_info.port != 80:
-            port = b':' + to_bytes(str(self.server_info.port))
+            port = b":" + to_bytes(str(self.server_info.port))
         body = None
-        hosts = (self.server_info.obfs_param or self.server_info.host)
+        hosts = self.server_info.obfs_param or self.server_info.host
         pos = hosts.find("#")
         if pos >= 0:
-            body = hosts[pos + 1:].replace("\\n", "\r\n")
+            body = hosts[pos + 1 :].replace("\\n", "\r\n")
             hosts = hosts[:pos]
-        hosts = hosts.split(',')
+        hosts = hosts.split(",")
         host = random.choice(hosts)
         http_head = b"POST /" + self.encode_head(headdata) + b" HTTP/1.1\r\n"
         http_head += b"Host: " + to_bytes(host) + port + b"\r\n"
@@ -251,9 +260,10 @@ class http_post(http_simple):
     def not_match_return(self, buf):
         self.has_sent_header = True
         self.has_recv_header = True
-        if self.method == 'http_post':
-            return (b'E'*2048, False, False)
+        if self.method == "http_post":
+            return (b"E" * 2048, False, False)
         return (buf, True, False)
+
 
 class random_head(plain.plain):
     def __init__(self, method):
@@ -262,7 +272,7 @@ class random_head(plain.plain):
         self.has_recv_header = False
         self.raw_trans_sent = False
         self.raw_trans_recv = False
-        self.send_buffer = b''
+        self.send_buffer = b""
 
     def client_encode(self, buf):
         if self.raw_trans_sent:
@@ -271,20 +281,20 @@ class random_head(plain.plain):
         if not self.has_sent_header:
             self.has_sent_header = True
             data = os.urandom(common.byte_value(os.urandom(1)[0]) % 96 + 4)
-            crc = (0xffffffff - binascii.crc32(data)) & 0xffffffff
-            return data + struct.pack('<I', crc)
+            crc = (0xFFFFFFFF - binascii.crc32(data)) & 0xFFFFFFFF
+            return data + struct.pack("<I", crc)
         if self.raw_trans_recv:
             ret = self.send_buffer
-            self.send_buffer = b''
+            self.send_buffer = b""
             self.raw_trans_sent = True
             return ret
-        return b''
+        return b""
 
     def client_decode(self, buf):
         if self.raw_trans_recv:
             return (buf, False)
         self.raw_trans_recv = True
-        return (b'', True)
+        return (b"", True)
 
     def server_encode(self, buf):
         if self.has_sent_header:
@@ -297,12 +307,11 @@ class random_head(plain.plain):
             return (buf, True, False)
 
         self.has_recv_header = True
-        crc = binascii.crc32(buf) & 0xffffffff
-        if crc != 0xffffffff:
+        crc = binascii.crc32(buf) & 0xFFFFFFFF
+        if crc != 0xFFFFFFFF:
             self.has_sent_header = True
-            if self.method == 'random_head':
-                return (b'E'*2048, False, False)
+            if self.method == "random_head":
+                return (b"E" * 2048, False, False)
             return (buf, True, False)
         # (buffer_to_recv, is_need_decrypt, is_need_to_encode_and_send_back)
-        return (b'', False, True)
-
+        return (b"", False, True)

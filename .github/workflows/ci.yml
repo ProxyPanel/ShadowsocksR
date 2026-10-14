@@ -19,11 +19,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install -r requirements.txt ruff
+        run: pip install -r requirements.txt ruff pytest
       - name: Lint with ruff
         run: ruff check .
+      - name: Check formatting
+        run: ruff format --check .
       - name: Byte-compile
         run: python -m compileall -q shadowsocks *.py
+      - name: Unit tests
+        run: pytest -q
       - name: Import smoke test
         run: |
           bash initcfg.sh

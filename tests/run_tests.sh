@@ -57,8 +57,15 @@ run_test "$PYTHON" -m compileall -q shadowsocks tests *.py
 
 if command -v ruff > /dev/null 2>&1; then
     run_test ruff check .
+    run_test ruff format --check .
 else
     echo "ruff not found, run: pip install ruff"
+fi
+
+if "$PYTHON" -c "import pytest" > /dev/null 2>&1; then
+    run_test "$PYTHON" -m pytest -q
+else
+    echo "pytest not found, run: pip install pytest"
 fi
 
 check_env

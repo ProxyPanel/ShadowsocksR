@@ -17,10 +17,10 @@
 import os
 import threading
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import inspect
-    os.chdir(os.path.dirname(os.path.realpath(
-        inspect.getfile(inspect.currentframe()))))
+
+    os.chdir(os.path.dirname(os.path.realpath(inspect.getfile(inspect.currentframe()))))
 
 import db_transfer
 from shadowsocks import shell
@@ -48,9 +48,10 @@ def main():
             thread.join(10.0)
     except (KeyboardInterrupt, IOError, OSError):
         import traceback
+
         traceback.print_exc()
         thread.stop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

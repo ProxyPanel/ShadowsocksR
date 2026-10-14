@@ -24,33 +24,33 @@ from subprocess import PIPE, Popen
 
 python = [sys.executable]
 
-default_url = 'http://localhost/'
+default_url = "http://localhost/"
 
-parser = argparse.ArgumentParser(description='test Shadowsocks')
-parser.add_argument('-c', '--client-conf', type=str, default=None)
-parser.add_argument('-s', '--server-conf', type=str, default=None)
-parser.add_argument('-a', '--client-args', type=str, default=None)
-parser.add_argument('-b', '--server-args', type=str, default=None)
-parser.add_argument('--with-coverage', action='store_true', default=None)
-parser.add_argument('--should-fail', action='store_true', default=None)
-parser.add_argument('--tcp-only', action='store_true', default=None)
-parser.add_argument('--url', type=str, default=default_url)
-parser.add_argument('--dns', type=str, default='8.8.8.8')
+parser = argparse.ArgumentParser(description="test Shadowsocks")
+parser.add_argument("-c", "--client-conf", type=str, default=None)
+parser.add_argument("-s", "--server-conf", type=str, default=None)
+parser.add_argument("-a", "--client-args", type=str, default=None)
+parser.add_argument("-b", "--server-args", type=str, default=None)
+parser.add_argument("--with-coverage", action="store_true", default=None)
+parser.add_argument("--should-fail", action="store_true", default=None)
+parser.add_argument("--tcp-only", action="store_true", default=None)
+parser.add_argument("--url", type=str, default=default_url)
+parser.add_argument("--dns", type=str, default="8.8.8.8")
 
 config = parser.parse_args()
 
 if config.with_coverage:
-    python = ['coverage', 'run', '-p']
+    python = ["coverage", "run", "-p"]
 
-client_args = python + ['shadowsocks/local.py', '-v']
-server_args = python + ['shadowsocks/server.py', '-v']
+client_args = python + ["shadowsocks/local.py", "-v"]
+server_args = python + ["shadowsocks/server.py", "-v"]
 
 if config.client_conf:
-    client_args.extend(['-c', config.client_conf])
+    client_args.extend(["-c", config.client_conf])
     if config.server_conf:
-        server_args.extend(['-c', config.server_conf])
+        server_args.extend(["-c", config.server_conf])
     else:
-        server_args.extend(['-c', config.client_conf])
+        server_args.extend(["-c", config.client_conf])
 if config.client_args:
     client_args.extend(config.client_args.split())
     if config.server_args:
@@ -58,7 +58,7 @@ if config.client_args:
     else:
         server_args.extend(config.client_args.split())
 if config.url == default_url:
-    server_args.extend(['--forbidden-ip', ''])
+    server_args.extend(["--forbidden-ip", ""])
 
 p1 = Popen(server_args, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
 p2 = Popen(client_args, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
@@ -90,20 +90,23 @@ try:
                     stage = 3
                 if stage == 4 and fd == p4.stdout:
                     stage = 5
-            line = line.decode('utf8')
+            line = line.decode("utf8")
             sys.stderr.write(line)
-            if line.find('starting local') >= 0:
+            if line.find("starting local") >= 0:
                 local_ready = True
-            if line.find('starting server') >= 0:
+            if line.find("starting server") >= 0:
                 server_ready = True
 
         if stage == 1:
             time.sleep(2)
 
-            p3 = Popen(['curl', config.url, '-v', '-L',
-                        '--socks5-hostname', '127.0.0.1:1081',
-                        '-m', '15', '--connect-timeout', '10'],
-                       stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+            p3 = Popen(
+                ["curl", config.url, "-v", "-L", "--socks5-hostname", "127.0.0.1:1081", "-m", "15", "--connect-timeout", "10"],
+                stdin=PIPE,
+                stdout=PIPE,
+                stderr=PIPE,
+                close_fds=True,
+            )
             if p3 is not None:
                 fdset.append(p3.stdout)
                 fdset.append(p3.stderr)
@@ -123,9 +126,7 @@ try:
                     sys.exit(1)
             if config.tcp_only:
                 break
-            p4 = Popen(['socksify', 'dig', '@%s' % config.dns,
-                        'www.google.com'],
-                       stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+            p4 = Popen(["socksify", "dig", "@%s" % config.dns, "www.google.com"], stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
             if p4 is not None:
                 fdset.append(p4.stdout)
                 fdset.append(p4.stderr)
@@ -138,11 +139,11 @@ try:
             if config.should_fail:
                 if r == 0:
                     sys.exit(1)
-                print('test passed (expecting failure)')
+                print("test passed (expecting failure)")
             else:
                 if r != 0:
                     sys.exit(1)
-                print('test passed')
+                print("test passed")
             break
 finally:
     for p in [p1, p2]:

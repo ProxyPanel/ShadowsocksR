@@ -32,7 +32,7 @@ def find_library_nt(name):
     # but we want to try them all
     # because on Windows, users may have both 32bit and 64bit version installed
     results = []
-    for directory in os.environ['PATH'].split(os.pathsep):
+    for directory in os.environ["PATH"].split(os.pathsep):
         fname = os.path.join(directory, name)
         if os.path.isfile(fname):
             results.append(fname)
@@ -56,7 +56,7 @@ def find_library(possible_lib_names, search_symbol, library_name):
     lib_names = []
     for lib_name in possible_lib_names:
         lib_names.append(lib_name)
-        lib_names.append('lib' + lib_name)
+        lib_names.append("lib" + lib_name)
 
     for name in lib_names:
         if os.name == "nt":
@@ -74,11 +74,7 @@ def find_library(possible_lib_names, search_symbol, library_name):
     import glob
 
     for name in lib_names:
-        patterns = [
-            '/usr/local/lib*/lib%s.*' % name,
-            '/usr/lib*/lib%s.*' % name,
-            'lib%s.*' % name,
-            '%s.dll' % name]
+        patterns = ["/usr/local/lib*/lib%s.*" % name, "/usr/lib*/lib%s.*" % name, "lib%s.*" % name, "%s.dll" % name]
 
         for pat in patterns:
             files = glob.glob(pat)
@@ -88,11 +84,10 @@ def find_library(possible_lib_names, search_symbol, library_name):
         try:
             lib = CDLL(path)
             if hasattr(lib, search_symbol):
-                logging.info('loading %s from %s', library_name, path)
+                logging.info("loading %s from %s", library_name, path)
                 return lib
             else:
-                logging.warning('can\'t find symbol %s in %s', search_symbol,
-                             path)
+                logging.warning("can't find symbol %s in %s", search_symbol, path)
         except Exception:
             if path == paths[-1]:
                 raise
@@ -110,36 +105,34 @@ def run_cipher(cipher, decipher):
 
     results = []
     pos = 0
-    print('test start')
+    print("test start")
     start = time.time()
     while pos < len(plain):
         l = random.randint(100, 32768)
-        c = cipher.update(plain[pos:pos + l])
+        c = cipher.update(plain[pos : pos + l])
         results.append(c)
         pos += l
     pos = 0
-    c = b''.join(results)
+    c = b"".join(results)
     results = []
     while pos < len(plain):
         l = random.randint(100, 32768)
-        results.append(decipher.update(c[pos:pos + l]))
+        results.append(decipher.update(c[pos : pos + l]))
         pos += l
     end = time.time()
-    print('speed: %d bytes/s' % (BLOCK_SIZE * rounds / (end - start)))
-    assert b''.join(results) == plain
+    print("speed: %d bytes/s" % (BLOCK_SIZE * rounds / (end - start)))
+    assert b"".join(results) == plain
 
 
 def test_find_library():
-    assert find_library('c', 'strcpy', 'libc') is not None
-    assert find_library(['c'], 'strcpy', 'libc') is not None
-    assert find_library(('c',), 'strcpy', 'libc') is not None
-    assert find_library(('crypto', 'eay32'), 'EVP_CipherUpdate',
-                        'libcrypto') is not None
-    assert find_library('notexist', 'strcpy', 'libnotexist') is None
-    assert find_library('c', 'symbol_not_exist', 'c') is None
-    assert find_library(('notexist', 'c', 'crypto', 'eay32'),
-                        'EVP_CipherUpdate', 'libc') is not None
+    assert find_library("c", "strcpy", "libc") is not None
+    assert find_library(["c"], "strcpy", "libc") is not None
+    assert find_library(("c",), "strcpy", "libc") is not None
+    assert find_library(("crypto", "eay32"), "EVP_CipherUpdate", "libcrypto") is not None
+    assert find_library("notexist", "strcpy", "libnotexist") is None
+    assert find_library("c", "symbol_not_exist", "c") is None
+    assert find_library(("notexist", "c", "crypto", "eay32"), "EVP_CipherUpdate", "libc") is not None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_find_library()

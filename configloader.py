@@ -6,9 +6,10 @@ import os
 g_config = None
 mysql_config = None
 
+
 def load_config():
     global g_config
-    g_config = importloader.loads(['userapiconfig', 'apiconfig'])
+    g_config = importloader.loads(["userapiconfig", "apiconfig"])
 
 
 def load_mysql_config():
@@ -24,10 +25,11 @@ def load_mysql_config():
         "ssl_enable": 0,
         "ssl_ca": "",
         "ssl_cert": "",
-        "ssl_key": ""}
+        "ssl_key": "",
+    }
     config_path = g_config.MYSQL_CONFIG
-    with open(os.path.join(os.path.split(__file__)[0],config_path), 'rb+') as f:
-        cfg = JsonUtil.json_loads(f.read().decode('utf8'))
+    with open(os.path.join(os.path.split(__file__)[0], config_path), "rb+") as f:
+        cfg = JsonUtil.json_loads(f.read().decode("utf8"))
     tmp.update(cfg)
     mysql_config = tmp
 
@@ -42,4 +44,3 @@ def get_mysql_config():
 
 load_config()
 load_mysql_config()
-

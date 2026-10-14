@@ -14,14 +14,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from ctypes import c_char_p, c_int, c_ulong, c_ulonglong, byref, \
-    create_string_buffer, c_void_p
+from ctypes import c_char_p, c_int, c_ulong, c_ulonglong, byref, create_string_buffer, c_void_p
 
 import logging
 
 from shadowsocks.crypto import util
 
-__all__ = ['ciphers']
+__all__ = ["ciphers"]
 
 libsodium = None
 loaded = False
@@ -35,48 +34,32 @@ BLOCK_SIZE = 64
 def load_libsodium():
     global loaded, libsodium, buf
 
-    libsodium = util.find_library('sodium', 'crypto_stream_salsa20_xor_ic',
-                                  'libsodium')
+    libsodium = util.find_library("sodium", "crypto_stream_salsa20_xor_ic", "libsodium")
     if libsodium is None:
-        raise Exception('libsodium not found')
+        raise Exception("libsodium not found")
 
     libsodium.crypto_stream_salsa20_xor_ic.restype = c_int
-    libsodium.crypto_stream_salsa20_xor_ic.argtypes = (c_void_p, c_char_p,
-                                                       c_ulonglong,
-                                                       c_char_p, c_ulonglong,
-                                                       c_char_p)
+    libsodium.crypto_stream_salsa20_xor_ic.argtypes = (c_void_p, c_char_p, c_ulonglong, c_char_p, c_ulonglong, c_char_p)
     libsodium.crypto_stream_chacha20_xor_ic.restype = c_int
-    libsodium.crypto_stream_chacha20_xor_ic.argtypes = (c_void_p, c_char_p,
-                                                        c_ulonglong,
-                                                        c_char_p, c_ulonglong,
-                                                        c_char_p)
+    libsodium.crypto_stream_chacha20_xor_ic.argtypes = (c_void_p, c_char_p, c_ulonglong, c_char_p, c_ulonglong, c_char_p)
 
     try:
         libsodium.crypto_stream_chacha20_ietf_xor_ic.restype = c_int
-        libsodium.crypto_stream_chacha20_ietf_xor_ic.argtypes = (c_void_p, c_char_p,
-                                                                 c_ulonglong,
-                                                                 c_char_p, c_ulong,
-                                                                 c_char_p)
+        libsodium.crypto_stream_chacha20_ietf_xor_ic.argtypes = (c_void_p, c_char_p, c_ulonglong, c_char_p, c_ulong, c_char_p)
     except Exception:
         logging.info("ChaCha20 IETF not support.")
         pass
 
     try:
         libsodium.crypto_stream_xsalsa20_xor_ic.restype = c_int
-        libsodium.crypto_stream_xsalsa20_xor_ic.argtypes = (c_void_p, c_char_p,
-                                                            c_ulonglong,
-                                                            c_char_p, c_ulonglong,
-                                                            c_char_p)
+        libsodium.crypto_stream_xsalsa20_xor_ic.argtypes = (c_void_p, c_char_p, c_ulonglong, c_char_p, c_ulonglong, c_char_p)
     except Exception:
         logging.info("XSalsa20 not support.")
         pass
 
     try:
         libsodium.crypto_stream_xchacha20_xor_ic.restype = c_int
-        libsodium.crypto_stream_xchacha20_xor_ic.argtypes = (c_void_p, c_char_p,
-                                                             c_ulonglong,
-                                                             c_char_p, c_ulonglong,
-                                                             c_char_p)
+        libsodium.crypto_stream_xchacha20_xor_ic.argtypes = (c_void_p, c_char_p, c_ulonglong, c_char_p, c_ulonglong, c_char_p)
     except Exception:
         logging.info("XChaCha20 not support. XChaCha20 only support since libsodium v1.0.12")
         pass
@@ -93,18 +76,18 @@ class SodiumCrypto(object):
         self.iv = iv
         self.key_ptr = c_char_p(key)
         self.iv_ptr = c_char_p(iv)
-        if cipher_name == 'salsa20':
+        if cipher_name == "salsa20":
             self.cipher = libsodium.crypto_stream_salsa20_xor_ic
-        elif cipher_name == 'chacha20':
+        elif cipher_name == "chacha20":
             self.cipher = libsodium.crypto_stream_chacha20_xor_ic
-        elif cipher_name == 'chacha20-ietf':
+        elif cipher_name == "chacha20-ietf":
             self.cipher = libsodium.crypto_stream_chacha20_ietf_xor_ic
-        elif cipher_name == 'xchacha20':
+        elif cipher_name == "xchacha20":
             self.cipher = libsodium.crypto_stream_xchacha20_xor_ic
-        elif cipher_name == 'xsalsa20':
+        elif cipher_name == "xsalsa20":
             self.cipher = libsodium.crypto_stream_xsalsa20_xor_ic
         else:
-            raise Exception('Unknown cipher')
+            raise Exception("Unknown cipher")
         # byte counter, not block counter
         self.counter = 0
 
@@ -120,63 +103,62 @@ class SodiumCrypto(object):
             buf = create_string_buffer(buf_size)
 
         if padding:
-            data = (b'\0' * padding) + data
-        self.cipher(byref(buf), c_char_p(data), padding + l,
-                    self.iv_ptr, self.counter // BLOCK_SIZE, self.key_ptr)
+            data = (b"\0" * padding) + data
+        self.cipher(byref(buf), c_char_p(data), padding + l, self.iv_ptr, self.counter // BLOCK_SIZE, self.key_ptr)
         self.counter += l
         # buf is copied to a str object when we access buf.raw
         # strip off the padding
-        return buf.raw[padding:padding + l]
+        return buf.raw[padding : padding + l]
 
     def clean(self):
         pass
 
 
 ciphers = {
-    'salsa20': (32, 8, SodiumCrypto),
-    'chacha20': (32, 8, SodiumCrypto),
-    'chacha20-ietf': (32, 12, SodiumCrypto),
-    'xchacha20': (32, 24, SodiumCrypto),
-    'xsalsa20': (32, 24, SodiumCrypto),
+    "salsa20": (32, 8, SodiumCrypto),
+    "chacha20": (32, 8, SodiumCrypto),
+    "chacha20-ietf": (32, 12, SodiumCrypto),
+    "xchacha20": (32, 24, SodiumCrypto),
+    "xsalsa20": (32, 24, SodiumCrypto),
 }
 
 
 def test_salsa20():
-    cipher = SodiumCrypto('salsa20', b'k' * 32, b'i' * 16, 1)
-    decipher = SodiumCrypto('salsa20', b'k' * 32, b'i' * 16, 0)
+    cipher = SodiumCrypto("salsa20", b"k" * 32, b"i" * 16, 1)
+    decipher = SodiumCrypto("salsa20", b"k" * 32, b"i" * 16, 0)
 
     util.run_cipher(cipher, decipher)
 
 
 def test_chacha20():
-    cipher = SodiumCrypto('chacha20', b'k' * 32, b'i' * 16, 1)
-    decipher = SodiumCrypto('chacha20', b'k' * 32, b'i' * 16, 0)
+    cipher = SodiumCrypto("chacha20", b"k" * 32, b"i" * 16, 1)
+    decipher = SodiumCrypto("chacha20", b"k" * 32, b"i" * 16, 0)
 
     util.run_cipher(cipher, decipher)
 
 
 def test_chacha20_ietf():
-    cipher = SodiumCrypto('chacha20-ietf', b'k' * 32, b'i' * 16, 1)
-    decipher = SodiumCrypto('chacha20-ietf', b'k' * 32, b'i' * 16, 0)
+    cipher = SodiumCrypto("chacha20-ietf", b"k" * 32, b"i" * 16, 1)
+    decipher = SodiumCrypto("chacha20-ietf", b"k" * 32, b"i" * 16, 0)
 
     util.run_cipher(cipher, decipher)
 
 
 def test_xchacha20():
-    cipher = SodiumCrypto('xchacha20', b'k' * 32, b'i' * 24, 1)
-    decipher = SodiumCrypto('xchacha20', b'k' * 32, b'i' * 24, 0)
+    cipher = SodiumCrypto("xchacha20", b"k" * 32, b"i" * 24, 1)
+    decipher = SodiumCrypto("xchacha20", b"k" * 32, b"i" * 24, 0)
 
     util.run_cipher(cipher, decipher)
 
 
 def test_xsalsa20():
-    cipher = SodiumCrypto('xsalsa20', b'k' * 32, b'i' * 24, 1)
-    decipher = SodiumCrypto('xsalsa20', b'k' * 32, b'i' * 24, 0)
+    cipher = SodiumCrypto("xsalsa20", b"k" * 32, b"i" * 24, 1)
+    decipher = SodiumCrypto("xsalsa20", b"k" * 32, b"i" * 24, 0)
 
     util.run_cipher(cipher, decipher)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_chacha20_ietf()
     test_chacha20()
     test_salsa20()

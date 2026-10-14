@@ -1,0 +1,2 @@
+# 仓库文本统一按 LF 检出：*.sh 若是 CRLF，Linux 上内核会把 "#!/bin/bash" 读成 "#!/bin/bash\r" 而执行失败
+* text=auto eol=lf

@@ -33,4 +33,3 @@ class JsonUtil(object):
         :return:
         """
         return loads(str)
-
