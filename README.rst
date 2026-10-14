@@ -11,6 +11,9 @@ Server
 Install
 ~~~~~~~
 
+Requires Python 3.13 or newer (3.14 is the recommended deployment
+target).
+
 Debian / Ubuntu:
 
 ::
@@ -109,7 +112,7 @@ Bugs and Issues
 
 -  `Troubleshooting <https://github.com/shadowsocks/shadowsocks/wiki/Troubleshooting>`__
 -  `Issue
-   Tracker <https://github.com/shadowsocks/shadowsocks/issues?state=open>`__
+   Tracker <https://github.com/ProxyPanel/ShadowsocksR/issues>`__
 -  `Mailing list <https://groups.google.com/group/shadowsocks>`__
 
 .. |Build Status| image:: https://github.com/ProxyPanel/ShadowsocksR/actions/workflows/ci.yml/badge.svg

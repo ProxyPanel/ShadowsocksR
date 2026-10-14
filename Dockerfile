@@ -19,5 +19,6 @@ WORKDIR /app/shadowsocks
 
 EXPOSE $SERVER_PORT
 
-# 命令行只取这六个变量，其余运行参数来自 /app/config.json；DNS_ADDR/DNS_ADDR_2 不参与单用户入口
+# 命令行只取 SERVER_PORT/PASSWORD/METHOD/PROTOCOL/OBFS/PROTOCOLPARAM 这六个变量
+# SERVER_ADDR、TIMEOUT 及其余运行参数一律来自 /app/config.json；DNS_ADDR/DNS_ADDR_2 没有读取方
 CMD ["sh", "-c", "exec python server.py -p \"$SERVER_PORT\" -k \"$PASSWORD\" -m \"$METHOD\" -O \"$PROTOCOL\" -o \"$OBFS\" -G \"$PROTOCOLPARAM\""]
